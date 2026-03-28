@@ -1,0 +1,23 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install pandoc
+      run: apt-get install -y pandoc
+    - name: Build PDF
+      run: |
+        cd papers
+        for tex in *.tex; do
+          pdflatex -interaction=nonstopmode "$tex" || true
+        done
