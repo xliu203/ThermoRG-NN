@@ -309,6 +309,7 @@ def train_architecture(
             best_test_acc = test_acc
             best_model_state = model.state_dict().copy()
             if save_path:
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 torch.save(best_model_state, save_path)
     
     # Final evaluation with best model
