@@ -431,6 +431,7 @@ class ThermoBot3(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
         x = self.block1(x)
+        residual = x.detach()  # Now residual = block1 output (64ch)
         x = self.block2(x)
         x = self.skip1(x, residual)
         
@@ -472,6 +473,7 @@ class ThermoBot5(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
         x = self.block1(x)
+        residual = x.detach()  # Now residual = block1 output (64ch)
         x = self.block2(x)
         x = self.skip1(x, residual)
         
@@ -522,6 +524,7 @@ class ThermoBot7(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
         x = self.block1(x)
+        residual = x.detach()  # Now residual = block1 output (64ch)
         x = self.block2(x)
         x = self.skip1(x, residual)
         
