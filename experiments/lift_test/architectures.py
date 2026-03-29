@@ -182,12 +182,25 @@ class BottleneckBlock(nn.Module):
 
 
 class SkipConnection(nn.Module):
-    """Skip connection with 1x1 conv if dimensions differ."""
+    """Skip connection with 1x1 conv projection when dimensions differ.
     
-    def __init__(self, in_channels: int, out_channels: int):
+    Handles both channel mismatch AND spatial downsampling (stride > 1).
+    The projection is always applied to the RESIDUAL to match x's dimensions.
+    
+    Args:
+        in_channels: Number of channels in the residual (from earlier layer)
+        out_channels: Number of channels in x (current layer output)
+        stride: Stride of current layer (for spatial downsampling)
+    """
+    
+    def __init__(self, in_channels: int, out_channels: int, stride: int = 1):
         super().__init__()
-        if in_channels != out_channels:
-            self.skip = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        if in_channels != out_channels or stride != 1:
+            # Project residual to match x's channel and spatial dimensions
+            self.skip = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
         else:
             self.skip = nn.Identity()
     
@@ -235,8 +248,8 @@ class ThermoNet3(nn.Module):
         residual = None
         for i, block in enumerate(self.blocks):
             x = block(x)
-            if i > 0 and self.skip_ops[i - 1] is not None:
-                x = self.skip_ops[i - 1](x, residual)
+            if i > 0 and self.skip_ops[i] is not None:
+                x = self.skip_ops[i](x, residual)
             residual = x.detach()
         
         x = self.pool(x)
@@ -281,8 +294,8 @@ class ThermoNet5(nn.Module):
         residual = None
         for i, block in enumerate(self.blocks):
             x = block(x)
-            if i > 0 and self.skip_ops[i - 1] is not None:
-                x = self.skip_ops[i - 1](x, residual)
+            if i > 0 and self.skip_ops[i] is not None:
+                x = self.skip_ops[i](x, residual)
             residual = x.detach()
         
         x = self.pool(x)
@@ -327,8 +340,8 @@ class ThermoNet7(nn.Module):
         residual = None
         for i, block in enumerate(self.blocks):
             x = block(x)
-            if i > 0 and self.skip_ops[i - 1] is not None:
-                x = self.skip_ops[i - 1](x, residual)
+            if i > 0 and self.skip_ops[i] is not None:
+                x = self.skip_ops[i](x, residual)
             residual = x.detach()
         
         x = self.pool(x)
