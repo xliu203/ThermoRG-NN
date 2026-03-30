@@ -572,6 +572,7 @@ class ThermoBot9(nn.Module):
                     activation='gelu', use_norm=True
                 ))
         
+        self.skip_interval = 2
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Linear(64, num_classes)
     
@@ -580,8 +581,9 @@ class ThermoBot9(nn.Module):
         
         for i, block in enumerate(self.blocks):
             x = block(x)
-            if i % 2 == 0 and i > 0 and i != 3:
-                skip_idx = (i // 2) - 1
+            if i % self.skip_interval == 0 and i > 0:
+                # Apply skip from block i-2
+                skip_idx = (i // self.skip_interval) - 1
                 if skip_idx < len(residuals):
                     residual = residuals[skip_idx]
                     if residual.shape[1] == x.shape[1]:
@@ -613,10 +615,11 @@ class ReLUFurnace3(nn.Module):
     
     def __init__(self, num_classes: int = 10):
         super().__init__()
-        self.block1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        self.block2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.block3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.block4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        channels = [3, 64, 64, 128, 128]
+        
+        self.blocks = nn.ModuleList()
+        for i in range(len(channels) - 1):
+            self.blocks.append(nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, padding=1))
         
         self.activations = nn.ModuleList([nn.ReLU(inplace=True) for _ in range(4)])
         
