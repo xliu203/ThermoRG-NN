@@ -266,6 +266,9 @@ class ThermoNet5(nn.Module):
     - GELU activation
     - LayerNorm after each block
     
+    Design note: Widening-then-narrowing channel profile (矮宽型 / wide-then-narrow).
+    Peak at 256ch. Compare with ThermoNet-9 which uses uniform 64ch (瘦长型).
+    
     Input: (batch, 3, 32, 32)
     Output: (batch, 10)
     """
@@ -312,6 +315,9 @@ class ThermoNet7(nn.Module):
     - TGA activation
     - LayerNorm after each block
     
+    Design note: Widening-then-narrowing channel profile (矮宽型 / wide-then-narrow).
+    Peak at 256ch. Compare with ThermoNet-9 which uses uniform 64ch (瘦长型).
+    
     Input: (batch, 3, 32, 32)
     Output: (batch, 10)
     """
@@ -357,6 +363,11 @@ class ThermoNet9(nn.Module):
     - 8 conv blocks with skip connections every 2 layers
     - GELU activation
     - LayerNorm after each block
+    
+    Design note: Uses uniform 64ch width (瘦长型 / slender architecture).
+    Unlike ThermoNet-5/-7 which widen to 256ch then narrow (矮宽型),
+    ThermoNet-9 stays at 64ch throughout for a deeper narrower profile.
+    Naming reflects topology (skip interval pattern), not channel width.
     
     Input: (batch, 3, 32, 32)
     Output: (batch, 10)
@@ -719,6 +730,10 @@ class ReLUFurnace9(nn.Module):
     - ReLU activation instead of GELU
     - No LayerNorm
     - No skip connections
+    
+    Design note: Uses uniform 64ch width (瘦长型 / slender architecture).
+    Naming reflects topology (skip interval pattern), not channel width.
+    See ThermoNet9 docstring for design rationale comparison.
     
     Input: (batch, 3, 32, 32)
     Output: (batch, 10)
