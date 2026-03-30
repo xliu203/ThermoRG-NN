@@ -869,14 +869,17 @@ class VGG11CIFAR(nn.Module):
         layers = []
         in_ch = 3
         
-        for out_ch in channels:
+        for idx, out_ch in enumerate(channels):
             layers.append(nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1))
             layers.append(nn.BatchNorm2d(out_ch))
             layers.append(nn.ReLU(inplace=True))
-            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 32 -> 16 -> 8 -> 4 -> 2 -> 1
+            # Only pool for first 5 groups (spatial: 32→16→8→4→2→1, no 6th pool)
+            if idx < len(channels) - 1:
+                layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
             in_ch = out_ch
         
         self.features = nn.Sequential(*layers)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Linear(512, num_classes)
         
         # Initialize weights
@@ -889,6 +892,7 @@ class VGG11CIFAR(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
