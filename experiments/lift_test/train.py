@@ -439,6 +439,14 @@ def train_phase_a(
         print(f"Training {arch_name}")
         print(f"{'='*60}")
         
+        arch_dir = Path(output_dir) / arch_name
+        phase_a_csv = arch_dir / "phase_a_metrics.csv"
+        
+        # ──断点续传：跳过已完成的架构──
+        if phase_a_csv.exists():
+            print(f"✅ {arch_name} 数据已存在，跳过训练...")
+            continue
+        
         save_path = f"{output_dir}/{arch_name}/best_model.pt"
         
         result = train_architecture(
@@ -452,6 +460,28 @@ def train_phase_a(
         )
         result.phase = 'A'
         results.append(result)
+        
+        # ──实时落盘：每个架构训练完立刻保存 CSV──
+        arch_dir.mkdir(parents=True, exist_ok=True)
+        with open(phase_a_csv, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                "epoch", "train_loss", "train_acc", "val_loss", "val_acc",
+                "test_loss", "test_acc", "lr", "time_seconds"
+            ])
+            writer.writeheader()
+            for m in result.epoch_metrics:
+                writer.writerow({
+                    "epoch": m.epoch,
+                    "train_loss": m.train_loss,
+                    "train_acc": m.train_acc,
+                    "val_loss": m.val_loss,
+                    "val_acc": m.val_acc,
+                    "test_loss": m.test_loss,
+                    "test_acc": m.test_acc,
+                    "lr": m.lr,
+                    "time_seconds": m.time_seconds
+                })
+        print(f"💾 已落盘: {phase_a_csv}")
         
         print(f"\n{arch_name} Results:")
         print(f"  Final Test Accuracy: {result.final_test_acc:.2f}%")
@@ -537,6 +567,14 @@ def train_phase_b(
         print(f"Training {arch_name}")
         print(f"{'='*60}")
         
+        arch_dir = Path(output_dir) / arch_name
+        phase_b_csv = arch_dir / "phase_b_metrics.csv"
+        
+        # ──断点续传：跳过已完成的架构──
+        if phase_b_csv.exists():
+            print(f"✅ {arch_name} Phase B 数据已存在，跳过训练...")
+            continue
+        
         save_path = f"{output_dir}/{arch_name}/best_model_phaseB.pt"
         
         result = train_architecture(
@@ -550,6 +588,28 @@ def train_phase_b(
         )
         result.phase = 'B'
         results.append(result)
+        
+        # ──实时落盘：每个架构训练完立刻保存 CSV──
+        arch_dir.mkdir(parents=True, exist_ok=True)
+        with open(phase_b_csv, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                "epoch", "train_loss", "train_acc", "val_loss", "val_acc",
+                "test_loss", "test_acc", "lr", "time_seconds"
+            ])
+            writer.writeheader()
+            for m in result.epoch_metrics:
+                writer.writerow({
+                    "epoch": m.epoch,
+                    "train_loss": m.train_loss,
+                    "train_acc": m.train_acc,
+                    "val_loss": m.val_loss,
+                    "val_acc": m.val_acc,
+                    "test_loss": m.test_loss,
+                    "test_acc": m.test_acc,
+                    "lr": m.lr,
+                    "time_seconds": m.time_seconds
+                })
+        print(f"💾 已落盘: {phase_b_csv}")
         
         print(f"\n{arch_name} Phase B Results:")
         print(f"  Final Test Accuracy: {result.final_test_acc:.2f}%")
