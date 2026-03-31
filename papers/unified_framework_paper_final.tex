@@ -424,6 +424,132 @@ q = \frac{2}{d_{\text{manifold}}}.
 \textbf{Physical interpretation:} When noise of fixed intensity $T_{\text{eff}}$ is confined to a compressed manifold ($\prod\eta_l < 1$), the effective thermal pressure per degree of freedom increases as $(\prod\eta_l)^{-2/d_{\text{manifold}}}$. For $d_{\text{manifold}} = 10$, this gives $q = 0.2$, exactly matching experimental observations.
 \end{coro}
 
+\section{Dataset Size Scaling: From $d_{\mathrm{manifold}}$ to $d_{\mathrm{eff}}$}
+\label{sec:d_scaling}
+
+\subsection{Two-Level Dimensional Hierarchy: $d_{\mathrm{manifold}}$ vs $d_{\mathrm{eff}}$}
+\label{sec:two_level_dims}
+
+We begin by strictly distinguishing three ambient quantities that are frequently conflated in the literature:
+
+\begin{dfn}[Ambient and Intrinsic Data Dimensions]
+\label{dfn:ambient_dims}
+\begin{itemize}
+    \item \textbf{Ambient dimension} $d_{\mathrm{data}}$: the raw representation dimensionality of the input space (e.g., $3 \times 32 \times 32 = 3072$ for CIFAR-10).
+    \item \textbf{Data manifold dimension} $d_{\mathrm{manifold}}$: the intrinsic topological dimension of the data distribution support $\mathcal{M}$, capturing all variations present in the data (syntax, style, semantics). Empirically $d_{\mathrm{manifold}} \approx 20$--$30$ for natural images \citep{pope2021efficient}.
+    \item \textbf{Effective task dimension} $d_{\mathrm{eff}}$: the number of orthogonal directions in the loss landscape that exhibit non-negligible curvature at the optimum. The remaining $d_{\mathrm{manifold}} - d_{\mathrm{eff}}$ directions are \emph{flat} (task-redundant, e.g., stylistic synonym substitutions that do not alter next-token prediction loss).
+\end{itemize}
+\end{dfn}
+
+\begin{dfn}[Effective Task Dimension via Hessian/Fisher Spectral Analysis]
+\label{dfn:d_eff_hessian}
+Let $H = \nabla_{\theta}^{2} \mathcal{L}(\theta^{*})$ be the Hessian of the training loss at a local minimum $\theta^{*}$, or equivalently the Fisher information matrix $\mathcal{F}$ at convergence. Denote its eigenvalues $\lambda_{1} \geq \lambda_{2} \geq \cdots \geq \lambda_{N} \geq 0$. We define the \emph{effective task dimension} as
+\begin{equation}
+    d_{\mathrm{eff}} \;:=\; \#\bigl\{\, i \;\big|\; \lambda_{i} / \lambda_{1} > \epsilon_{\lambda}\,\bigr\},
+    \label{eq:d_eff_def}
+\end{equation}
+where $\epsilon_{\lambda} = 10^{-4}$ is a standard numerical threshold. Directions with $\lambda_{i} / \lambda_{1} < \epsilon_{\lambda}$ are operationally \emph{flat} and do not contribute to the loss.
+\end{dfn}
+
+\begin{dfn}[Representation Dimension via Participation Ratio]
+\label{dfn:d_rep_cov}
+For completeness we also define the \emph{representation dimension}, which measures effective dimensionality of the activation space:
+\begin{equation}
+    d_{\mathrm{rep}} \;:=\; \frac{\bigl(\sum_{i=1}^{r} \lambda_{i}^{\mathrm{(act)}}\bigr)^{2}}{\sum_{i=1}^{r}\bigl(\lambda_{i}^{\mathrm{(act)}}\bigr)^{2}},
+    \label{eq:d_rep_def}
+\end{equation}
+where $\lambda^{\mathrm{(act)}}$ are eigenvalues of the activation covariance matrix collected over $D$ samples. Note carefully: $d_{\mathrm{rep}}$ characterizes the \emph{representation geometry}, not the loss landscape. In general $d_{\mathrm{rep}} \neq d_{\mathrm{eff}}$ and the two must not be confused. See Table~\ref{tab:dim_comparison} for a rigorous comparison.
+\end{dfn}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative summary of three dimensionality measures.}
+\label{tab:dim_comparison}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Quantity & Symbol & What it Measures & Measurement Method \\ \midrule
+Ambient dim. & $d_{\mathrm{data}}$ & Raw input space & Direct count \\
+Manifold dim. & $d_{\mathrm{manifold}}$ & Data dist. support & PCA / Minkowski est. \\
+Task eff. dim. & $d_{\mathrm{eff}}$ & Loss curvature space & Hessian/Fisher eigenspectrum \\
+Representation dim. & $d_{\mathrm{rep}}$ & Activation space & Activation covariance PR \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{D-Scaling via Anisotropic Covering and Quotient Space}
+\label{sec:anisotropic_covering}
+
+The key physical insight is that the $D$ training samples do not uniformly cover the full $d_{\mathrm{manifold}}$ manifold---they are projected through the information bottleneck of the network onto the $d_{\mathrm{eff}}$--dimensional subspace relevant to the task. We formalize this as a \emph{quotient space} construction.
+
+\begin{dfn}[Effective Covering Resolution]
+\label{dfn:eff_resolution}
+Let $\mathcal{M}_{\mathrm{eff}} = \mathcal{M} / \sim$ be the quotient manifold obtained by identifying directions in the kernel of the Fisher information. The $D$ training samples induce a covering of $\mathcal{M}_{\mathrm{eff}}$ with average inter-sample resolution
+\begin{equation}
+    \epsilon_{\mathrm{eff}}(D) \;\sim\; D^{-1/d_{\mathrm{eff}}}.
+    \label{eq:epsilon_eff}
+\end{equation}
+This is the standard covering-number scaling for a $d_{\mathrm{eff}}$--dimensional ball of unit volume.
+\end{dfn}
+
+\begin{paperenv}{Derivation of $D$-Scaling}
+Starting from the optimal approximation theory on a $d_{\mathrm{eff}}$--dimensional manifold with Sobolev smoothness $s$ \citep{devore1998nonlinear}, the $L_{2}$ approximation error of a smoothness-$s$ target function from $D$ samples scales as
+\begin{equation}
+    \mathcal{E}(D) \;\sim\; \epsilon_{\mathrm{eff}}^{\,s}(D) \;\sim\; \bigl(D^{-1/d_{\mathrm{eff}}}\bigr)^{s} \;=\; D^{-s/d_{\mathrm{eff}}}.
+    \label{eq:gen_error_scaling}
+\end{equation}
+Matching this with the Chinchilla scaling form $L(D) = E + \cdots + B\,D^{-\beta}$ identifies the data-scaling exponent:
+\begin{equation}
+    \boxed{\;\beta \;=\; \frac{s}{d_{\mathrm{eff}}}\;}.
+    \label{eq:beta_def}
+\end{equation}
+\end{paperenv}
+
+\begin{rema}
+For natural image classification (CIFAR-10, ImageNet), the target function is conjectured to have $s \approx 1$ in the relevant scaling regime, yielding $\beta \approx 1/d_{\mathrm{eff}}$. For language modeling Chinchilla reports $\beta \approx 0.28$, implying $d_{\mathrm{eff}} \approx 3.6$---strikingly close to the number of distinct semantic roles (subject, relation, object) in basic sentence structure.
+\end{rema}
+
+\subsection{Physical Picture: RG Flow from $d_{\mathrm{manifold}}$ to $d_{\mathrm{eff}}$}
+\label{sec:rg_flow_dim}
+
+The ThermoRG cooling dynamics performs a \emph{renormalization group flow} that drives the effective dimensionality from $d_{\mathrm{manifold}}$ (all geometric variations in the data) down to $d_{\mathrm{eff}}$ (only the task-relevant directions that actually affect the loss):
+
+\begin{theo}[RG Dimensional Reduction]
+\label{theo:rg_dim_reduction}
+Under the ThermoRG flow $\gamma_{\mathrm{cool}} \to 0$, the network parameters $\theta$ flow along the gradient descent trajectory that monotonically suppresses curvature along $d_{\mathrm{manifold}} - d_{\mathrm{eff}}$ flat directions. The fixed point of this flow is characterized by
+\begin{equation}
+    \nabla_{\theta}\mathcal{L}\Big|_{\gamma_{\mathrm{cool}}\to 0} \;\perp\; \mathrm{span}\bigl\{\, v_i \;\big|\; \lambda_i / \lambda_1 < \epsilon_{\lambda} \,\bigr\},
+    \label{eq:flat_minima_condition}
+\end{equation}
+i.e., the gradient is supported only on the $d_{\mathrm{eff}}$ non-flat eigendirections. This is the geometric incarnation of \emph{flat minima} \citep{hochreiter1997flat}.
+\end{theo}
+
+Consequently, the architectural optimization target $\prod\eta_l \to 1$ (equivalently $J_{\mathrm{topo}} \to 0$) should be understood as: \emph{the architecture should admit a training dynamics that allows the RG flow to maximally reduce the effective dimensionality toward the task-relevant subspace}.
+
+\subsection{Experimental Validation Protocol}
+\label{sec:d_eff_validation}
+
+We propose a two-pronged validation protocol that exploits the complementarity of Methods 2 and 4:
+
+\begin{prot}[Phase A Extension: $d_{\mathrm{eff}}$ Measurement]
+\label{prot:d_eff_validation}
+\begin{enumerate}
+    \item \textbf{Scaling Law Inversion (Method 4):} For each architecture $A \in \{\text{ThermoNet-}n, \text{ResNet-18}, \dots\}$, train with $D \in \{5K, 10K, 25K, 50K\}$ data subsets on CIFAR-10. Fit the empirical exponent $\hat{\beta}(A)$ by ordinary least squares in $\log D$--$\log L$ space. Set $s=1$ and compute $\hat{d}_{\mathrm{eff}}(A) = s / \hat{\beta}(A)$.
+    \item \textbf{Hessian Trace Estimation (Method 2):} At the best checkpoint of each full-training run, apply the Hutchinson estimator
+    \begin{equation}
+        \mathrm{Tr}(H) \;\approx\; \frac{1}{M}\sum_{m=1}^{M} v_m^{\top} H\, v_m, \qquad v_m \sim \mathcal{N}(0,I),
+        \label{eq:hutchinson}
+    \end{equation}
+    with $M=200$ samples to obtain the full eigenspectrum. Count eigenvalues above $\epsilon_{\lambda}=10^{-4}$ to obtain $d_{\mathrm{eff}}^{\mathrm{(Hessian)}}(A)$.
+    \item \textbf{Cross-validation:} Verify $|\hat{d}_{\mathrm{eff}}(A) - d_{\mathrm{eff}}^{\mathrm{(Hessian)}}(A)| < 2$ for all architectures. Failure indicates systematic bias requiring revision of the $s$ estimate.
+\end{enumerate}
+\end{prot}
+
+\begin{rema}
+For CIFAR-10-scale models (ResNet-18: 11M params, ThermoNet-5: 2.1M params), the Hutchinson estimator requires $O(N)$ matrix-vector products per trace sample, giving a total cost of $O(M \cdot L \cdot N_{\mathrm{batch}})$ which is fully tractable on a single GPU-hour.
+\end{rema}
+
+
+
+
 \section{Mathematical Isomorphism of the Four Frameworks}
 
 \begin{theo}[Order Parameter Equivalence]\label{theo:order_equiv}
