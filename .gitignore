@@ -29,9 +29,6 @@ checkpoints/
 .ipynb_checkpoints/
 
 # Results
-results/
-*.json
-*.csv
 
 # IDE
 .vscode/

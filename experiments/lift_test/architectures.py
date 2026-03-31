@@ -938,13 +938,13 @@ class DenseNet40CIFAR(nn.Module):
         self.dense1 = self._make_dense_block(num_channels, block_layers)
         num_channels += block_layers * growth_rate
         out_channels = int(num_channels * compression)
-        self.trans1 = self._make_transition(out_channels)
+        self.trans1 = self._make_transition(num_channels, out_channels)
         
         num_channels = out_channels
         self.dense2 = self._make_dense_block(num_channels, block_layers)
         num_channels += block_layers * growth_rate
         out_channels = int(num_channels * compression)
-        self.trans2 = self._make_transition(out_channels)
+        self.trans2 = self._make_transition(num_channels, out_channels)
         
         num_channels = out_channels
         self.dense3 = self._make_dense_block(num_channels, block_layers)
@@ -968,11 +968,11 @@ class DenseNet40CIFAR(nn.Module):
             block.append(_DenseLayer(in_channels + _ * self.growth_rate, self.growth_rate))
         return nn.Sequential(*block)
     
-    def _make_transition(self, out_channels: int):
+    def _make_transition(self, in_channels: int, out_channels: int):
         return nn.Sequential(
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=1, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
             nn.AvgPool2d(kernel_size=2, stride=2)
         )
     
