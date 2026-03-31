@@ -227,26 +227,53 @@ class FeatureExtractor:
         for h in self.handles: h.remove()
 
 # ── TAS Alpha Computation ──────────────────────────────────────────────────────────
-def compute_alpha_from_features(features):
-    """Heuristic alpha when TAS package unavailable."""
-    if len(features) < 2: return None
+def _get_channel_progression(model, x):
+    """Extract in/out channels from Conv2d and Linear layers during a forward pass."""
+    in_chs, out_chs = [], []
+    hooks = []
+    def _hook(mod, inp, out):
+        if isinstance(mod, nn.Conv2d):
+            in_chs.append(mod.in_channels); out_chs.append(mod.out_channels)
+        elif isinstance(mod, nn.Linear):
+            in_chs.append(mod.in_features); out_chs.append(mod.out_features)
+    for m in model.modules():
+        hooks.append(m.register_forward_hook(_hook))
+    with torch.no_grad():
+        generic_forward(model, x)
+    for h in hooks: h.remove()
+    return in_chs, out_chs
+
+def compute_alpha_from_channels(in_chs, out_chs):
+    """Compute TAS alpha from channel progression. No TAS package needed."""
     import math
-    eta_vals, smooth_vals, d_vals = [], [], []
-    for f in features:
-        if f.shape[1] < 2 or f.shape[0] < 5: continue
-        d = float(f.shape[1]); d_vals.append(d)
-        eta = min(max(d / max(d, 1), 0.1), 2.0); eta_vals.append(eta)
-        smooth_vals.append(float(f.std().item()))
+    eta_vals = []
+    for ic, oc in zip(in_chs, out_chs):
+        if ic == 0 or oc == 0: continue
+        eta = min(max(oc / ic, 0.1), 10.0)
+        eta_vals.append(eta)
     if not eta_vals: return None
-    eta_prod = max(1e-10, math.prod([max(min(e,2.0),0.1) for e in eta_vals]))
+    eta_prod = max(1e-10, math.prod(eta_vals))
     J_topo = abs(math.log(eta_prod))
-    d_avg = np.mean(d_vals)
-    avg_s = np.mean(smooth_vals) if smooth_vals else 1.0
-    alpha = J_topo * (2.0 * avg_s / max(d_avg, 1.0))
+    alpha = J_topo / len(eta_vals)
+    # Channel expansion factor
+    final_ch = out_chs[-1] if out_chs else 0
+    init_ch = in_chs[0] if in_chs else 0
+    expansion = final_ch / init_ch if init_ch > 0 else 1.0
     return {
-        'alpha': float(alpha), 'J_topo': float(J_topo), 'eta_product': float(eta_prod),
-        'avg_smoothness': float(avg_s), 'd_avg': float(d_avg),
-        'C1_pass': J_topo < 5.0, 'C2_pass': True, 'num_layers': len(features),
+        'alpha': float(alpha),
+        'J_topo': float(J_topo),
+        'eta_product': float(eta_prod),
+        'expansion_factor': float(expansion),
+        'num_layers': len(eta_vals),
+    }
+
+def compute_alpha_from_features(features):
+    """DEPRECATED: kept for avg_smoothness only. Use compute_alpha_from_channels instead."""
+    if len(features) < 2: return None
+    smooth_vals = [float(f.std().item()) for f in features if f.shape[1] >= 2 and f.shape[0] >= 5]
+    return {
+        'avg_smoothness': float(np.mean(smooth_vals)) if smooth_vals else 0.0,
+        'num_layers': len(features),
     }
 
 # ── Data Loading ─────────────────────────────────────────────────────────────────
@@ -269,8 +296,23 @@ def get_cifar10_loader(batch_size=64, n_samples=5000, data_dir='./data'):
         print(f"  CIFAR-10 load failed ({e}), using fake data"); return get_fake_loader(batch_size, n_samples)
 
 # ── d_manifold ────────────────────────────────────────────────────────────────────
+def compute_d_manifold_pca_fallback(X, thresholds=[0.90, 0.95, 0.99]):
+    """Fallback PCA d_manifold when thermorg not available."""
+    X = X[:5000].numpy() if hasattr(X, 'numpy') else X[:5000]
+    X = X - X.mean(axis=0)
+    cov = np.cov(X.T)
+    eigvals = np.linalg.eigvalsh(cov)
+    eigvals = np.sort(eigvals)[::-1]
+    eigvals = eigvals[eigvals > 1e-10]
+    total = eigvals.sum()
+    vr = eigvals / total
+    results = {}
+    for t in thresholds:
+        dim = int((vr.cumsum() >= t).nonzero()[0][0]) + 1
+        results[f'pca_{int(t*100)}'] = float(dim)
+    return results
+
 def compute_d_manifold(data_iter, n=5000):
-    if not HAS_TAS: return {}
     print("  Computing d_manifold...")
     X_list, y_list = [], []
     for imgs, lbls in data_iter:
@@ -278,17 +320,31 @@ def compute_d_manifold(data_iter, n=5000):
         if sum(x.shape[0] for x in X_list) >= n: break
     X = torch.cat(X_list)[:n]; y = torch.cat(y_list)[:n]
     results = {}
-    for t in [0.90, 0.95, 0.99]:
-        try: results[f'pca_{int(t*100)}'] = float(estimate_d_manifold_pca(X, t))
-        except: results[f'pca_{int(t*100)}'] = None
-    for k in [10, 20]:
-        try: results[f'levina_k{k}'] = float(estimate_d_manifold_levina(X, k))
-        except: results[f'levina_k{k}'] = None
+    # PCA-based (works without thermorg)
+    try:
+        pca_results = compute_d_manifold_pca_fallback(X.float(), [0.90, 0.95, 0.99])
+        results.update(pca_results)
+        for k, v in pca_results.items():
+            print(f"  {k}: {v}")
+    except Exception as e:
+        print(f"  PCA failed: {e}")
+    # thermorg-based if available
+    if HAS_TAS:
+        for t in [0.90, 0.95, 0.99]:
+            try: results[f'tas_pca_{int(t*100)}'] = float(estimate_d_manifold_pca(X, t))
+            except: pass
+        for k in [10, 20]:
+            try: results[f'tas_levina_k{k}'] = float(estimate_d_manifold_levina(X, k))
+            except: pass
+    # Class-separability
     centroids = torch.stack([X[y==c].mean(0) for c in range(10)])
     cc = centroids - centroids.mean(0); cov = torch.cov(cc.T); eig = torch.linalg.eigvalsh(cov).flip(0)
     vr = eig / eig.sum()
-    try: results['d_separable_95'] = float((vr.cumsum(0) >= 0.95).nonzero()[0][0].item() + 1)
-    except: results['d_separable_95'] = None
+    try:
+        d_sep = float((vr.cumsum(0) >= 0.95).nonzero()[0][0].item() + 1)
+        results['d_separable_95'] = d_sep
+        print(f"  d_separable_95: {d_sep}")
+    except: pass
     return results
 
 # ── Main Profiling Loop ───────────────────────────────────────────────────────────
@@ -300,26 +356,32 @@ def profile_all(data_iter, device, actual_results, n_per_arch=500):
         model = builder().to(device); model.eval()
         n_params = sum(p.numel() for p in model.parameters())
         actual_acc = (actual_results.get(name, {}) or {}).get('best_acc') if actual_results else None
+        # Channel-based alpha (architecture property, not data-dependent)
+        # Use random input: no data dependency, only architecture structure matters
+        x_ch = torch.randn(2, 3, 32, 32).to(device)
+        ic, oc = _get_channel_progression(model, x_ch)
+        ch_metrics = compute_alpha_from_channels(ic, oc)
+        # Feature-based avg_smoothness (needs real data)
         ext = FeatureExtractor(model); feats = []; total = 0
         for imgs, _ in data_iter:
             f = ext.run(imgs.to(device)); feats.extend(f); total += f[0].shape[0]
             print('.', end='', flush=True)
             if total >= n_per_arch: break
         ext.remove()
-        metrics = compute_alpha_from_features(feats)
+        feat_metrics = compute_alpha_from_features(feats)
         results[name] = {
             'group': group, 'params': n_params, 'actual_acc': actual_acc,
-            'alpha': metrics['alpha'] if metrics else None,
-            'J_topo': metrics['J_topo'] if metrics else None,
-            'eta_product': metrics['eta_product'] if metrics else None,
-            'avg_smoothness': metrics['avg_smoothness'] if metrics else None,
-            'd_avg': metrics['d_avg'] if metrics else None,
-            'C1_pass': metrics['C1_pass'] if metrics else None,
-            'C2_pass': metrics['C2_pass'] if metrics else None,
-            'num_layers': metrics['num_layers'] if metrics else None,
+            'alpha': ch_metrics['alpha'] if ch_metrics else None,
+            'J_topo': ch_metrics['J_topo'] if ch_metrics else None,
+            'eta_product': ch_metrics['eta_product'] if ch_metrics else None,
+            'expansion_factor': ch_metrics.get('expansion_factor') if ch_metrics else None,
+            'avg_smoothness': feat_metrics.get('avg_smoothness') if feat_metrics else None,
+            'C1_pass': (ch_metrics['J_topo'] < 5.0) if ch_metrics else None,
+            'C2_pass': True,
+            'num_layers': ch_metrics['num_layers'] if ch_metrics else None,
         }
         acc_str = f"{actual_acc:.1f}%" if actual_acc else "N/A"
-        alp_str = f"{metrics['alpha']:.3f}" if metrics else "N/A"
+        alp_str = f"{results[name]['alpha']:.3f}" if results[name].get('alpha') else "N/A"
         print(f" params={n_params/1e6:.2f}M alpha={alp_str} acc={acc_str}")
     return results
 
