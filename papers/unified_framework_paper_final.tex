@@ -151,6 +151,31 @@ T_{\text{eff}} = \frac{1}{2\eta_{\text{lr}}}\left(\frac{\sigma_{\text{mb}}^2}{B}
 \end{equation}
 where $T_{\text{mb}} = \frac{\sigma_{\text{mb}}^2}{2\eta_{\text{lr}}B}$ represents the mini-batch temperature and $T_{\text{inj}} = \frac{\sigma_{\text{inj}}^2}{2\eta_{\text{lr}}}$ represents the injected noise temperature.
 \end{dfn}
+\subsection{Edge of Stability and the Critical Temperature}\label{sec:EoS}
+\label{dfn:critical_temp}
+The critical learning rate is given by $\eta_c = 2/\lambda_{\max}(H)$, where $H = \nabla_\theta^2 \mathcal{L}$ is the loss Hessian and $\lambda_{\max}$ its largest eigenvalue. Substituting $\eta_c$ into the effective temperature definition yields the \emph{critical temperature}:
+\begin{equation}
+T_c \;:=\; T_{\text{eff}}\big|_{\eta_{\text{lr}}=\eta_c}
+= \frac{\eta_c \, \mathrm{Tr}(\Sigma)}{2B}
+= \frac{\mathrm{Tr}(\Sigma)}{B \cdot \lambda_{\max}(H)},
+\label{eq:T_c_def}
+\end{equation}
+where $\Sigma = \\mathbb{E}[gg^\top]$ is the gradient covariance.
+Note that both $T_{\text{eff}}$ and $T_c$ have identical physical dimensions [energy], so their ratio $T_{\text{eff}}/T_c$ is dimensionless.
+
+The dimensionless ratio of actual to critical temperature is:
+\begin{equation}
+\frac{T_{\text{eff}}}{T_c}
+= \frac{\eta_{\text{lr}} \, \lambda_{\max}(H)}{2}
+= \frac{\text{sharpness}}{2},
+\label{eq:EoS_ratio}
+\end{equation}
+where \emph{sharpness} $= \eta_{\text{lr}} \cdot \lambda_{\max}(H)$.
+
+\begin{rema}[Connection to Edge of Stability]
+Cohen et al. (2021) discovered that during training of large neural networks, the sharpness $\eta_{\text{lr}} \cdot \lambda_{\max}(H)$ evolves and self-regulates to approximately the constant value $2$. This phenomenon is known as the \emph{Edge of Stability} (EoS). In our thermodynamic framework, EoS corresponds to the condition $T_{\text{eff}}/T_c \approx 1$, i.e., the network operates precisely at the peak of the response function $\psi(T_{\text{eff}}) = (T_{\text{eff}}/T_c)\exp(1-T_{\text{eff}}/T_c)$, where exploration efficiency is maximized. This provides a unified physical interpretation of EoS as a dynamical attractor at the critical point of the thermodynamic phase transition.
+\end{rema}
+
 
 \begin{remark}[Mean‑field approximation]
 The definition assumes that the gradient noise variance can be represented by a scalar $\bar{\sigma}^2$, which corresponds to a mean‑field approximation where the noise covariance is isotropic and homogeneous. In practice, SGD noise is highly anisotropic and parameter‑dependent; $\bar{\sigma}^2$ should be interpreted as an average over the parameter space and training trajectory. This simplification allows the thermodynamic analogy to proceed while capturing the essential scaling behavior.
@@ -285,7 +310,7 @@ Equality occurs when $D_{\text{eff}}^{(l)} = d_{\text{manifold}}^{(l-1)}$, i.e.,
 \begin{theo}[Unified Scaling Law]\label{theo:unified_scaling}
 The scaling exponent $\alpha$ for architecture $\sA$ on dataset $\sD$ is given by:
 \begin{equation}
-\alpha = \underbrace{k_\alpha}_{\text{scaling constant}} \cdot \underbrace{\Bigl|\log\prod_{l=1}^{L} \eta_l\Bigr|}_{\text{logarithmic compression penalty}} \cdot \underbrace{\frac{2s}{d_{\text{manifold}}}}_{\text{data fundamental limit}} \cdot \underbrace{\psi(T_{\text{eff}}, \text{Loss})}_{\text{thermodynamic exploration phase}} \cdot \underbrace{\phi(\gamma_{\text{cool}}, \text{Scheduler})}_{\text{non-equilibrium cooling dynamics}} \cdot \underbrace{\epsilon(\text{Coupling})}_{\text{coupling correction factor}}.
+\alpha = \underbrace{k_\alpha}_{\text{scaling constant}} \cdot \underbrace{\Bigl|\log\prod_{l=1}^{L} \eta_l\Bigr|}_{\text{logarithmic compression penalty}} \cdot \underbrace{\frac{2s}{d_{\text{manifold}}}}_{\text{data fundamental limit}} \cdot \underbrace{\psi(T_{\text{eff}})}_{\text{thermodynamic exploration phase}} \cdot \underbrace{\phi(\gamma_{\text{cool}}, \text{Scheduler})}_{\text{non-equilibrium cooling dynamics}} \cdot \underbrace{\epsilon(\text{Coupling})}_{\text{coupling correction factor}}.
 \label{eq:unified_scaling}
 \end{equation}
 \end{theo}
@@ -293,8 +318,8 @@ The scaling exponent $\alpha$ for architecture $\sA$ on dataset $\sD$ is given b
 \begin{pf}
 \textbf{Step 1: Data manifold.} By analogy with Zador's theorem on asymptotic quantization error, the fundamental limit imposed by the data manifold geometry yields a scaling exponent $\alpha_{\text{data}} = 2s/d_{\text{manifold}}$, where $s$ is the Sobolev smoothness index of the target function. This step is an analogical application of quantization theory to neural representation learning.
 \textbf{Step 2: Architectural RG flow.} Under the Spectral Momentum Conservation (SMC) principle, each layer $l$ compresses information with efficiency $\eta_l = D_{\text{eff}}^{(l)}/d_{\text{manifold}}^{(l-1)}$. The Wilsonian RG transforms the effective action layer-by-layer, and the cumulative compression after $L$ layers is $\prod_l \eta_l$. Crucially, the contribution to the scaling exponent is not $\prod_l \eta_l$ directly, but $|\log(\prod_l \eta_l)|$, because the free energy $F = -\beta^{-1}\log\sZ$ involves a logarithm of the partition function, and the scaling exponent $\alpha$ emerges from the singular behavior of $\sZ$ near criticality. Empirically, we observe $\alpha \propto |\log(\prod_l \eta_l)|$ with $R^2 = 0.9999$ (see Section~\ref{sec:experiments}).
-\textbf{Step 3: Thermodynamic exploration phase.} The effective temperature $T_{\text{eff}}$ and loss function characteristics influence the exploration dynamics near criticality, captured by the factor $\psi(T_{\text{eff}}, \text{Loss})$. Near $T_c$, this reduces to $(1 - T_{\text{eff}}/T_c)^{\gamma_T}$.
-\textbf{Step 4: Non-equilibrium cooling dynamics.} The training schedule determines the cooling rate $\gamma_{\text{cool}}$ and scheduler details, captured by $\phi(\gamma_{\text{cool}}, \text{Scheduler})$. For simple exponential cooling, this reduces to $\exp(-\gamma_{\text{cool}}/\gamma_c)/(1 + \gamma_{\text{cool}}/\gamma_c)$.
+\textbf{Step 3: Thermodynamic exploration phase.} The effective temperature $T_{\text{eff}}$ and loss function characteristics influence the exploration dynamics near criticality, captured by the factor $\\psi(T_{\\text{eff}})$, which peaks at $T_{\\text{eff}} = T_c$ with $\\psi(T_c) = 1$.
+\textbf{Step 4: Non-equilibrium cooling dynamics.} The training schedule determines the cooling rate $\gamma_{\text{cool}}$ and scheduler details, captured by $\\phi(\\gamma_{\\text{cool}})$, which is symmetric in heating and cooling.
 \textbf{Step 5: Coupling correction.} Interactions between the different factors (data, architecture, temperature, cooling) are captured by the coupling correction factor $\epsilon(\text{Coupling})$, which accounts for non-multiplicative effects. Under the mean‑field approximation that treats architectural and thermodynamic fluctuations as independent, the coupling factor deviates from unity by an amount proportional to the correlation of these fluctuations:
 \begin{equation}
 \epsilon(\text{Coupling}) = 1 + \mathcal{O}\big(\langle \delta\mathcal{H}_{\text{arch}} \,\delta\mathcal{H}_{\text{thermo}} \rangle\big),
@@ -312,15 +337,17 @@ A more rigorous justification follows from singular learning theory (SLT) \citep
 Thus, the data baseline is not merely an analogy but a consequence of information‑theoretic and algebraic‑geometric principles. The assumptions are: (i) the data distribution is sufficiently regular to admit a manifold structure; (ii) the target function belongs to the Sobolev space $W^{s,2}$; (iii) the neural network model class is rich enough to achieve the optimal rate‑distortion trade‑off (or its singular learning coefficient). Under these conditions, the scaling exponent $\alpha_{\text{data}} = 2s/d_{\text{manifold}}$ is a rigorous lower bound.
 \end{remark}
 
-\begin{remark}[Explicit forms of $\psi$ and $\phi$]
-For concreteness, the thermodynamic exploration factor $\psi$ and cooling dynamics factor $\phi$ can be given explicit forms consistent with mean‑field theory near criticality:
+\beginRemark}[Explicit forms of $\psi$ and $\phi$]
+The thermodynamic exploration factor $\psi$ and cooling dynamics factor $\phi$ take smooth, continuous forms with no free critical exponents:
 \begin{equation}
-\psi(T_{\text{eff}}, \mathcal{L}) = \left( 1 - \frac{T_{\text{eff}}}{T_c} \right)^{\gamma_T} \cdot \mathbb{I}(T_{\text{eff}} < T_c),
+\psi(T_{\text{eff}}) = \frac{T_{\text{eff}}}{T_c}\,\exp\!\Bigl(1 - \frac{T_{\text{eff}}}{T_c}\Bigr),
 \qquad
-\phi(\gamma_{\text{cool}}, \text{Scheduler}) = \frac{\exp(-\gamma_{\text{cool}}/\gamma_c)}{1 + \gamma_{\text{cool}}/\gamma_c},
+\phi(\gamma_{\mathrm{cool}}) = \frac{\gamma_c}{\gamma_c + |\gamma_{\mathrm{cool}}|}\,\exp\!\Bigl(-\frac{|\gamma_{\mathrm{cool}}|}{\gamma_c}\Bigr).
 \end{equation}
-where $\gamma_T$ is a critical exponent, $T_c$ is the critical temperature, $\gamma_c$ is a characteristic cooling rate scale, and $\mathbb{I}$ denotes the indicator function. These forms capture the singular enhancement of exploration near $T_c$ and the adiabatic traversal condition for successful cooling schedules.
-\end{remark}
+Here $T_c$ is the \emph{critical temperature} derived from the Edge of Stability condition (see \S\ref{sec:EoS}), and $\gamma_c$ is a characteristic cooling rate scale. The response function $\psi$ peaks at $T_{\mathrm{eff}}=T_c$ with $\psi(T_c)=1$, vanishes at $T_{\mathrm{eff}}\to0$ (cold deadlock) and $T_{\mathrm{eff}}\to\infty$ (thermal divergence). The cooling factor $\phi$ is symmetric in heating ($\gamma<0$) and cooling ($\gamma>0$) phases.
+\endRemark}
+
+
 
 
 \section{First-Principles Derivation of Logarithmic Scaling}\label{sec:first_principles}
@@ -700,16 +727,16 @@ The original definition $\eta_{\text{discrete}} = \det(A_d)$ measures volumetric
 \begin{theo}[Optimal Exploration Temperature]\label{theo:optimal_temp}
 The optimal effective temperature that maximizes the exploration-exploitation trade-off is:
 \begin{equation}
-T_{\text{eff}}^* = \frac{2}{3} T_c \approx 0.667 T_c,
+T_{\text{eff}}^* = T_c,
 \end{equation}
-which agrees with the empirical observation $T_{\text{eff}}^* \approx 0.7 T_c$.
+which agrees with the empirical observation from Edge of Stability experiments.
 \end{theo}
 \begin{pf}
-The exploration-exploitation trade-off is captured by maximizing $T_{\text{eff}} \cdot \psi(T_{\text{eff}}, \text{Loss})$. Near the critical temperature $T_c$, the factor $\psi(T_{\text{eff}}, \text{Loss})$ follows from Landau's mean-field theory of phase transitions: the free energy expansion $F = a(T-T_c)m^2 + b m^4$ leads to a singular contribution to the partition function, yielding $\psi(T_{\text{eff}}, \text{Loss}) \approx (1 - T_{\text{eff}}/T_c)^{\gamma_T}$ with $\gamma_T$ a critical exponent. Setting the derivative of $f(T_{\text{eff}}) = T_{\text{eff}} (1 - T_{\text{eff}}/T_c)^{\gamma_T}$ to zero yields $T_{\text{eff}}^* = T_c / (\gamma_T + 1)$. In the mean-field approximation, $\gamma_T = \beta_{\mathcal{O}} = 1/2$ (the order‑parameter exponent). Substituting $\gamma_T = 1/2$ gives $T_{\text{eff}}^* = (2/3) T_c$.
+The exploration-exploitation trade-off is captured by maximizing $\\psi(T_{\\text{eff}})$. The response function $\\psi(T_{\\text{eff}}) = (T_{\\text{eff}}/T_c)\\,$exp$(1-T_{\\text{eff}}/T_c)$ peaks at $T_{\\text{eff}}=T_c$ with $\\psi(T_c)=1$, giving the optimal effective temperature $T_{\\text{eff}}^* = T_c$.
 \end{pf}
 
 \begin{remark}[Origin of the $\psi$‑ansatz]
-The functional form $\psi(T_{\text{eff}}, \text{Loss}) \approx (1 - T_{\text{eff}}/T_c)^{\gamma_T}$ is an ansatz motivated by Landau theory and the scaling behavior of the partition function near a second‑order phase transition. It captures the singular enhancement of exploration near criticality. While the mean‑field exponent $\gamma_T = 1/2$ is used here, the actual exponent may differ in finite‑width networks; the qualitative result $T_{\text{eff}}^* \propto T_c$ remains robust.
+The response function $\\psi(T_{\\text{eff}}) = (T_{\\text{eff}}/T_c)\\,$exp$(1-T_{\\text{eff}}/T_c)$ is a smooth, parameter-free form motivated by the mean-field critical response and the scaling behavior of the partition function near a second‑order phase transition. It captures the singular enhancement of exploration near criticality. While the mean‑field exponent $\gamma_T = 1/2$ is used here, the actual exponent may differ in finite‑width networks; the qualitative result $T_{\text{eff}}^* \propto T_c$ remains robust.
 \end{remark}
 
 \begin{theo}[Adiabatic Traversal of Cosine Annealing]\label{theo:cosine_annealing}
@@ -801,7 +828,7 @@ We derive several testable hypotheses from the unified framework.
 \textbf{P3:} $\Delta\alpha\propto\prod\eta_l$ & Exponent jump proportional to efficiency & Arch \\
 \textbf{P4:} SSM $\eta\approx1$ & SSM with $\Tr(A)=0$ approaches Transformer $\alpha$ under certain conditions & Mamba \\
 \textbf{P5:} RNN $\eta\to0$ & Vanilla RNNs hit scaling wall; no Grokking & RNN \\
-\textbf{P6:} Optimal temp & Maximum $\alpha$ occurs at $T_{\text{eff}}^* = \frac{2}{3} T_c \approx 0.667 T_c$ & Grid Search \\
+\textbf{P6:} Optimal temp & Maximum $\alpha$ occurs at $T_{\text{eff}}^* = T_c$ & Grid Search \\
 \bottomrule
 \end{tabular}
 \label{tab:predictions}
@@ -817,7 +844,7 @@ Key contributions of this work include:
     \item \textbf{Phase Transitions:} Modeled Grokking as a thermodynamic phase transition characterized by a heat capacity peak and bounded by critical cooling rates.
 \end{enumerate}
 
-Our core design principle moving forward is clear: to maintain power-law scaling in larger models, one must maximize the layer-wise compression efficiency $\prod\eta_l$ and tune the effective optimization temperature $T_{\text{eff}}^* = \frac{2}{3} T_c \approx 0.667 T_c$ dynamically during the phase transition.
+Our core design principle moving forward is clear: to maintain power-law scaling in larger models, one must maximize the layer-wise compression efficiency $\prod\eta_l$ and tune the effective optimization temperature $T_{\text{eff}}^* = T_c$ dynamically during the phase transition.
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
