@@ -449,7 +449,17 @@ Let $H = \nabla_{\theta}^{2} \mathcal{L}(\theta^{*})$ be the Hessian of the trai
     \label{eq:d_eff_def}
 \end{equation}
 where $\epsilon_{\lambda} = 10^{-4}$ is a standard numerical threshold. Directions with $\lambda_{i} / \lambda_{1} < \epsilon_{\lambda}$ are operationally \emph{flat} and do not contribute to the loss.
-\end{dfn}
+\end{d
+
+\begin{dfn}[Intrinsic Task Dimension $d_{\mathrm{task}}$ and Realized Effective Dimension]
+\label{dfn:d_task_realized}
+The \emph{intrinsic task dimension} $d_{\mathrm{task}}$ is a property of the data distribution and loss function only, independent of architecture. The \emph{realized effective dimension} is modulated by the topological conductance:
+\begin{equation}
+    d_{\mathrm{eff}}^{\mathrm{(realized)}} \;=\; \frac{d_{\mathrm{task}}}{J_{\mathrm{topo}}}.
+    \label{eq:d_realized_def}
+\end{equation}
+When $J_{\mathrm{topo}}\to1$ (ideal architecture), $d_{\mathrm{eff}}^{\mathrm{(realized)}}\to d_{\mathrm{task}}$. When $J_{\mathrm{topo}}\to0$, the RG flow cannot compress the manifold efficiently and $d_{\mathrm{eff}}^{\mathrm{(realized)}}\to\infty$ (dimensional catastrophe).
+\end{dfn}fn}
 
 \begin{dfn}[Representation Dimension via Participation Ratio]
 \label{dfn:d_rep_cov}
