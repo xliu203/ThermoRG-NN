@@ -305,6 +305,26 @@ Equality occurs when $D_{\text{eff}}^{(l)} = d_{\text{manifold}}^{(l-1)}$, i.e.,
 \qed
 \end{pf}
 
+
+
+\subsection{Effective Task Dimension and the Participation Ratio}\label{sec:d_task_effective}
+\label{dfn:d_task_PR}
+The covering-number argument gives $\beta = s/d_{\mathrm{task}}$ as a \emph{worst-case bound} under the isotropy assumption: all $d_{\mathrm{task}}$ modes contribute equally to the learning complexity. However, this assumption is violated in practice.
+
+\begin{dfn}[Participation Ratio]\label{dfn:participation_ratio}
+For a target function $f^*(\vx) = \sum_{i=1}^{d_{\mathrm{task}}} a_i \phi_i(\vx)$ with spectral coefficients $a_i$, define the energy spectrum $\lambda_i = a_i^2$. The \emph{participation ratio} is
+\begin{equation}
+d_{\mathrm{task}}^{\mathrm{(PR)}} \;:=\; \frac{\bigl(\sum_i \lambda_i\bigr)^2}{\sum_i \lambda_i^2}
+\;\in\; [1,\; d_{\mathrm{task}}].
+\label{eq:d_task_PR}
+\end{equation}
+If all modes are equally important ($\lambda_i = 1$), then $d_{\mathrm{task}}^{\mathrm{(PR)}} = d_{\mathrm{task}}$ (isotropic worst case). If energy concentrates in few modes (typical spectral decay), then $d_{\mathrm{task}}^{\mathrm{(PR)}} \ll d_{\mathrm{task}}$.
+\end{dfn}
+
+\begin{rema}[Neural Networks Break the Isotropy Assumption]
+SGD-trained neural networks exhibit \emph{spectral bias}: they learn the dominant (low-frequency) Fourier components first. Once aligned with the principal directions, the effective learning problem reduces to a lower-dimensional subspace. The fitted scaling exponent from our simulations ($\beta_{\mathrm{fit}} \approx 1.0$) consistently exceeds the worst-case bound ($\beta_{\mathrm{worst}} = s/d_{\mathrm{task}} = 0.30$) and matches the participation-ratio prediction ($\beta_{\mathrm{eff}} = s/d_{\mathrm{task}}^{\mathrm{(PR)}} \approx 1.09$) across architectures. This confirms that real networks exploit anisotropic spectral structure to beat the classical dimension curse.
+\end{rema}
+
 \section{The Unified Scaling Framework}
 
 \begin{theo}[Unified Scaling Law]\label{theo:unified_scaling}
