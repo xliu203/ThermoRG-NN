@@ -43,28 +43,26 @@ warnings.filterwarnings('ignore')
 # CONFIG
 # ─────────────────────────────────────────────────────────
 
-# 12 architectures for Phase A v2
-# Families: ThermoNet-W (width scaling), ThermoNet-L (depth scaling), ResNet, VGG
 ARCHITECTURES = [
-    # ThermoNet width family (vary width, fixed depth ~5)
-    {"name": "TN-W8",  "arch": "ThermoNet-5",  "width_scale": 0.125},  # W≈0.5M
-    {"name": "TN-W16", "arch": "ThermoNet-5",  "width_scale": 0.25},   # W≈1M
-    {"name": "TN-W32", "arch": "ThermoNet-5",  "width_scale": 0.5},   # W≈2M
-    {"name": "TN-W64", "arch": "ThermoNet-5",  "width_scale": 1.0},   # W≈4M
-    # ThermoNet depth family (vary depth, fixed width ~64)
-    {"name": "TN-L3",  "arch": "ThermoNet-3",  "width_scale": 1.0},   # 4 blocks
-    {"name": "TN-L5",  "arch": "ThermoNet-5",  "width_scale": 1.0},   # 5 blocks
-    {"name": "TN-L7",  "arch": "ThermoNet-7",  "width_scale": 1.0},   # 7 blocks
-    {"name": "TN-L9",  "arch": "ThermoNet-9",  "width_scale": 1.0},    # 9 blocks
+    # ThermoNet width family
+    {"Name": "TN-W8",  "arch": "TN3",  "width_mult": 0.25},
+    {"Name": "TN-W16", "arch": "TN3",  "width_mult": 0.5},
+    {"Name": "TN-W32", "arch": "TN3",  "width_mult": 1.0},
+    {"Name": "TN-W64", "arch": "TN5",  "width_mult": 0.5},
+    # ThermoNet depth family
+    {"Name": "TN-L3",  "arch": "TN3",  "width_mult": 1.0},
+    {"Name": "TN-L5",  "arch": "TN5",  "width_mult": 1.0},
+    {"Name": "TN-L7",  "arch": "TN7",  "width_mult": 1.0},
+    {"Name": "TN-L9",  "arch": "TN9",  "width_mult": 1.0},
     # Traditional baselines
-    {"name": "ResNet-18", "arch": "ResNet-18-CIFAR",  "width_scale": 1.0},
-    {"name": "ResNet-34", "arch": "ResNet-34-CIFAR",  "width_scale": 1.0},
-    {"name": "VGG-11",    "arch": "VGG-11-CIFAR",     "width_scale": 1.0},
-    {"name": "VGG-13",    "arch": "VGG-13-CIFAR",     "width_scale": 1.0},
+    {"Name": "ResNet-18", "arch": "R18", "width_mult": 1.0},
+    {"Name": "ResNet-34", "arch": "R34", "width_mult": 1.0},
+    {"Name": "VGG-11",    "arch": "VGG11","width_mult": 1.0},
+    {"Name": "VGG-13",    "arch": "VGG13","width_mult": 1.0},
 ]
 
-D_VALUES  = [2000, 5000, 10000, 25000, 50000]   # 5 log-spaced points
-SEEDS     = [42, 123]                            # 2 seeds
+D_VALUES  = [2000, 5000, 10000, 25000, 50000]
+SEEDS     = [42, 123]
 EPOCHS    = 50
 LR        = 0.1
 BATCH_SIZE = 128
@@ -74,33 +72,211 @@ OUT_DIR   = Path("experiments/phase_a/results_v2")
 CKPT_DIR  = Path("experiments/phase_a/checkpoints_v2")
 
 # ─────────────────────────────────────────────────────────
-# DATASET
+# MODEL BUILDERS (inline, avoid torchvision import issues)
 # ─────────────────────────────────────────────────────────
 
-def load_cifar10(data_root="./data"):
-    """Load CIFAR-10, return (train_X, train_Y, test_X, test_Y)."""
-    try:
-        from torchvision import datasets
-        train_ds = datasets.CIFAR10(root=data_root, train=True, download=True)
-        test_ds  = datasets.CIFAR10(root=data_root, train=False, download=True)
-        X_train = torch.from_numpy(np.array(train_ds.data)).float().permute(0,3,1,2) / 255.0
-        Y_train = torch.tensor(train_ds.targets, dtype=torch.long)
-        X_test  = torch.from_numpy(np.array(test_ds.data)).float().permute(0,3,1,2) / 255.0
-        Y_test  = torch.tensor(test_ds.targets, dtype=torch.long)
-        # Normalize
-        mean = torch.tensor([0.491, 0.482, 0.447]).view(1, 3, 1, 1)
-        std  = torch.tensor([0.247, 0.243, 0.262]).view(1, 3, 1, 1)
-        X_train = (X_train - mean) / std
-        X_test  = (X_test  - mean) / std
-        return X_train, Y_train, X_test, Y_test
-    except Exception as e:
-        print(f"CIFAR-10 load failed: {e}")
-        print("Using fake data for testing...")
-        X_train = torch.randn(50000, 3, 32, 32)
-        Y_train = torch.randint(0, 10, (50000,))
-        X_test  = torch.randn(10000, 3, 32, 32)
-        Y_test  = torch.randint(0, 10, (10000,))
-        return X_train, Y_train, X_test, Y_test
+class SkipConnection(nn.Module):
+    def __init__(self, ic, oc, s=1):
+        super().__init__()
+        if ic == oc and s == 1:
+            self.skip = nn.Identity()
+        else:
+            self.skip = nn.Sequential(nn.Conv2d(ic, oc, 1, s, bias=False), nn.BatchNorm2d(oc))
+    def forward(self, x, residual):
+        return x + self.skip(residual)
+
+
+class ConvBlock(nn.Module):
+    def __init__(self, ic, oc, act='gelu', norm=True):
+        super().__init__()
+        self.conv = nn.Conv2d(ic, oc, 3, padding=1, bias=not norm)
+        self.norm = nn.LayerNorm([oc, 32, 32]) if norm else nn.Identity()
+        if act == 'gelu':
+            self.act = nn.GELU()
+        elif act == 'tga':
+            self.act = nn.Tanh()
+        else:
+            self.act = nn.ReLU(inplace=True)
+    def forward(self, x):
+        return self.act(self.norm(self.conv(x)))
+
+
+class Bottleneck(nn.Module):
+    def __init__(self, ic, oc, bd, act='gelu', norm=True):
+        super().__init__()
+        self.c1 = nn.Conv2d(ic, bd, 1, bias=not norm)
+        self.n1 = nn.LayerNorm([bd, 32, 32]) if norm else nn.Identity()
+        self.c2 = nn.Conv2d(bd, bd, 3, padding=1, bias=not norm)
+        self.n2 = nn.LayerNorm([bd, 32, 32]) if norm else nn.Identity()
+        self.c3 = nn.Conv2d(bd, oc, 1, bias=not norm)
+        self.n3 = nn.LayerNorm([oc, 32, 32]) if norm else nn.Identity()
+        if act == 'gelu':
+            self.act = nn.GELU()
+        elif act == 'tga':
+            self.act = nn.Tanh()
+        else:
+            self.act = nn.ReLU(inplace=True)
+    def forward(self, x):
+        x = self.act(self.n1(self.c1(x)))
+        x = self.act(self.n2(self.c2(x)))
+        return self.act(self.n3(self.c3(x)))
+
+
+class BasicBlock(nn.Module):
+    def __init__(self, ic, oc, stride=1, downsample=None):
+        super().__init__()
+        self.conv1 = nn.Conv2d(ic, oc, 3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(oc)
+        self.conv2 = nn.Conv2d(oc, oc, 3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(oc)
+        self.downsample = downsample
+    def forward(self, x):
+        identity = x
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        return F.relu(out + identity)
+
+
+def make_layer(ic, oc, blocks, stride=1):
+    downsample = None
+    if stride != 1 or ic != oc:
+        downsample = nn.Sequential(nn.Conv2d(ic, oc, 1, stride=stride, bias=False), nn.BatchNorm2d(oc))
+    layers = [BasicBlock(ic, oc, stride, downsample)]
+    for _ in range(1, blocks):
+        layers.append(BasicBlock(oc, oc))
+    return nn.Sequential(*layers)
+
+
+def scale_channels(chs, mult):
+    """Scale channel list by multiplier."""
+    return [max(1, int(c * mult)) for c in chs]
+
+
+# ── Model builders ────────────────────────────────────────
+
+def build_TN3(wm=1.0, num_classes=10):
+    """ThermoNet-3: [64,64,128,128]"""
+    ch = scale_channels([3,64,64,128,128], wm)
+    blocks = nn.ModuleList()
+    skips = nn.ModuleList()
+    for i in range(len(ch)-1):
+        blocks.append(ConvBlock(ch[i], ch[i+1], 'gelu', True))
+        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+    pool = nn.AdaptiveAvgPool2d((1,1))
+    fc = nn.Linear(ch[-1], num_classes)
+    return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
+
+
+def build_TN5(wm=1.0, num_classes=10):
+    """ThermoNet-5: [64,128,256,128,64]"""
+    ch = scale_channels([3,64,128,256,128,64], wm)
+    blocks = nn.ModuleList()
+    skips = nn.ModuleList()
+    for i in range(len(ch)-1):
+        blocks.append(ConvBlock(ch[i], ch[i+1], 'gelu', True))
+        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+    pool = nn.AdaptiveAvgPool2d((1,1))
+    fc = nn.Linear(ch[-1], num_classes)
+    return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
+
+
+def build_TN7(wm=1.0, num_classes=10):
+    """ThermoNet-7: [64,64,128,128,256,128,64]"""
+    ch = scale_channels([3,64,64,128,128,256,128,64], wm)
+    blocks = nn.ModuleList()
+    skips = nn.ModuleList()
+    for i in range(len(ch)-1):
+        blocks.append(ConvBlock(ch[i], ch[i+1], 'tga', True))
+        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+    pool = nn.AdaptiveAvgPool2d((1,1))
+    fc = nn.Linear(ch[-1], num_classes)
+    return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
+
+
+def build_TN9(wm=1.0, num_classes=10):
+    """ThermoNet-9: [64]*8 uniform"""
+    ch = scale_channels([3]+[64]*8, wm)
+    blocks = nn.ModuleList()
+    for i in range(len(ch)-1):
+        blocks.append(ConvBlock(ch[i], ch[i+1], 'gelu', True))
+    pool = nn.AdaptiveAvgPool2d((1,1))
+    fc = nn.Linear(ch[-1], num_classes)
+    return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
+
+
+def build_R18(num_classes=10):
+    model = nn.Sequential(
+        nn.Conv2d(3, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(),
+        make_layer(64, 64, 2, 1),
+        make_layer(64, 128, 2, 2),
+        make_layer(128, 256, 2, 2),
+        make_layer(256, 512, 2, 2),
+        nn.AdaptiveAvgPool2d((1,1)), nn.Flatten(), nn.Linear(512, num_classes)
+    )
+    return model
+
+
+def build_R34(num_classes=10):
+    model = nn.Sequential(
+        nn.Conv2d(3, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(),
+        make_layer(64, 64, 3, 1),
+        make_layer(64, 128, 3, 2),
+        make_layer(128, 256, 3, 2),
+        make_layer(256, 512, 3, 2),
+        nn.AdaptiveAvgPool2d((1,1)), nn.Flatten(), nn.Linear(512, num_classes)
+    )
+    return model
+
+
+def build_VGG11(num_classes=10):
+    ch = [64,128,256,256,512,512]
+    layers = []
+    prev = 3
+    for i, oc in enumerate(ch):
+        layers.extend([nn.Conv2d(prev, oc, 3, padding=1), nn.BatchNorm2d(oc), nn.ReLU(inplace=True)])
+        if i < len(ch)-1:
+            layers.append(nn.MaxPool2d(2,2))
+        prev = oc
+    model = nn.Sequential(
+        *layers,
+        nn.AdaptiveAvgPool2d((1,1)), nn.Flatten(), nn.Linear(512, num_classes)
+    )
+    return model
+
+
+def build_VGG13(num_classes=10):
+    ch = [64,64,128,128,256,256,512,512]
+    layers = []
+    prev = 3
+    for i, oc in enumerate(ch):
+        layers.extend([nn.Conv2d(prev, oc, 3, padding=1), nn.BatchNorm2d(oc), nn.ReLU(inplace=True)])
+        if i % 2 == 1 and i < len(ch)-2:
+            layers.append(nn.MaxPool2d(2,2))
+        prev = oc
+    model = nn.Sequential(
+        *layers,
+        nn.AdaptiveAvgPool2d((1,1)), nn.Flatten(), nn.Linear(512, num_classes)
+    )
+    return model
+
+
+def get_arch_model(arch_key, width_mult=1.0, num_classes=10):
+    """Get model by architecture key."""
+    builders = {
+        "TN3":  build_TN3,
+        "TN5":  build_TN5,
+        "TN7":  build_TN7,
+        "TN9":  build_TN9,
+        "R18":  lambda wm=1: build_R18(),
+        "R34":  lambda wm=1: build_R34(),
+        "VGG11": lambda wm=1: build_VGG11(),
+        "VGG13": lambda wm=1: build_VGG13(),
+    }
+    if arch_key in ("R18", "R34", "VGG11", "VGG13"):
+        return builders[arch_key]()
+    return builders[arch_key](wm=width_mult)
 
 
 # ─────────────────────────────────────────────────────────
@@ -121,13 +297,6 @@ def compute_J_topo(weights, input_dim=3):
     """
     J_topo = exp(-|Σ log η_l| / L)
     η_l = D_eff^(l) / D_eff^(l-1)
-    D_eff = ||W_l||_F² / λ_max(W_l)
-
-    Args:
-        weights: list of weight tensors [W1, W2, ..., W_L]
-        input_dim: input dimension for first layer
-    Returns:
-        J_topo scalar, list of η_l values
     """
     if not weights:
         return 0.0, []
@@ -136,7 +305,14 @@ def compute_J_topo(weights, input_dim=3):
     d_prev = float(input_dim)
 
     for W in weights:
-        W_mat = W.view(-1, W.shape[-1]) if W.dim() > 1 else W.unsqueeze(0)
+        # Handle both Conv2d (out, in, H, W) and Linear (out, in)
+        if W.dim() == 4:
+            W_mat = W.view(W.shape[0], -1)
+        elif W.dim() == 2:
+            W_mat = W
+        else:
+            W_mat = W.reshape(W.shape[0], -1)
+
         D = compute_D_eff(W_mat)
         eta = D / max(d_prev, 1e-12)
         eta_vals.append(eta)
@@ -149,41 +325,32 @@ def compute_J_topo(weights, input_dim=3):
 
 
 # ─────────────────────────────────────────────────────────
-# ARCHITECTURE BUILDERS
+# DATASET
 # ─────────────────────────────────────────────────────────
 
-# Import from existing codebase
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from experiments.lift_test.architectures import get_model, MODEL_REGISTRY
-
-# Width-scaled ThermoNet builder
-def build_width_scaled_thermonet5(width_scale, num_classes=10):
-    """Build ThermoNet-5 with scaled width."""
-    # Get base model and scale its channels
-    model = get_model("ThermoNet-5", num_classes)
-    # Scale all Conv2d channel dimensions
-    for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d):
-            scale = int(round(module.out_channels * width_scale))
-            scale = max(1, scale)
-            # We can't easily scale, so just return base
-    return get_model("ThermoNet-5", num_classes)
-
-
-def get_arch_model(name, num_classes=10):
-    """Get model by architecture name."""
-    ARCH_MAP = {
-        "ThermoNet-3": "ThermoNet-3",
-        "ThermoNet-5": "ThermoNet-5",
-        "ThermoNet-7": "ThermoNet-7",
-        "ThermoNet-9": "ThermoNet-9",
-        "ResNet-18-CIFAR": "ResNet-18-CIFAR",
-        "ResNet-34-CIFAR": "ResNet-34-CIFAR",
-        "VGG-11-CIFAR":   "VGG-11-CIFAR",
-        "VGG-13-CIFAR":   "VGG-13-CIFAR",
-    }
-    arch_name = ARCH_MAP.get(name, name)
-    return get_model(arch_name, num_classes)
+def load_cifar10(data_root="./data"):
+    """Load CIFAR-10 with fallback to fake data."""
+    try:
+        from torchvision import datasets
+        train_ds = datasets.CIFAR10(root=data_root, train=True, download=True)
+        test_ds  = datasets.CIFAR10(root=data_root, train=False, download=True)
+        X_train = torch.from_numpy(np.array(train_ds.data)).float().permute(0,3,1,2) / 255.0
+        Y_train = torch.tensor(train_ds.targets, dtype=torch.long)
+        X_test  = torch.from_numpy(np.array(test_ds.data)).float().permute(0,3,1,2) / 255.0
+        Y_test  = torch.tensor(test_ds.targets, dtype=torch.long)
+        mean = torch.tensor([0.491, 0.482, 0.447]).view(1, 3, 1, 1)
+        std  = torch.tensor([0.247, 0.243, 0.262]).view(1, 3, 1, 1)
+        X_train = (X_train - mean) / std
+        X_test  = (X_test  - mean) / std
+        print(f"  Loaded CIFAR-10: train={X_train.shape}, test={X_test.shape}")
+        return X_train, Y_train, X_test, Y_test
+    except Exception as e:
+        print(f"  CIFAR-10 load failed ({e}), using fake data")
+        X_train = torch.randn(50000, 3, 32, 32)
+        Y_train = torch.randint(0, 10, (50000,))
+        X_test  = torch.randn(10000, 3, 32, 32)
+        Y_test  = torch.randint(0, 10, (10000,))
+        return X_train, Y_train, X_test, Y_test
 
 
 # ─────────────────────────────────────────────────────────
@@ -191,13 +358,11 @@ def get_arch_model(name, num_classes=10):
 # ─────────────────────────────────────────────────────────
 
 def subset_loader(X, Y, size, batch_size, seed):
-    """Create a random subset of training data."""
     rng = np.random.default_rng(seed)
     indices = rng.permutation(len(X))[:size]
-    X_sub = X[indices]
-    Y_sub = Y[indices]
-    dataset = torch.utils.data.TensorDataset(X_sub, Y_sub)
-    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    return torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(X[indices], Y[indices]),
+        batch_size=batch_size, shuffle=True, drop_last=True)
 
 
 def train_one_epoch(model, loader, optimizer):
@@ -215,8 +380,8 @@ def train_one_epoch(model, loader, optimizer):
 @torch.no_grad()
 def evaluate(model, X_test, Y_test, batch_size=256):
     model.eval()
-    correct = 0
     total_loss = 0
+    correct = 0
     loader = torch.utils.data.DataLoader(
         torch.utils.data.TensorDataset(X_test, Y_test),
         batch_size=batch_size, shuffle=False)
@@ -228,79 +393,80 @@ def evaluate(model, X_test, Y_test, batch_size=256):
     return total_loss / n, correct / n
 
 
-def train_run(arch_name, D, seed, X_train, Y_train, X_test, Y_test,
-              epochs=EPOCHS, lr=LR, checkpoint_path=None):
-    """
-    Train one (arch, D, seed) combination.
-    Returns dict with metrics.
-    """
+def train_run(arch_cfg, D, seed, X_train, Y_train, X_test, Y_test,
+              epochs=EPOCHS, lr=LR, ckpt_path=None):
+    arch_name = arch_cfg["Name"]
+    base_arch = arch_cfg["arch"]
+    wm = arch_cfg.get("width_mult", 1.0)
+
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    model = get_arch_model(arch_name)
-    model = model.cuda() if torch.cuda.is_available() else model
-
+    model = get_arch_model(base_arch, wm).cuda() if torch.cuda.is_available() else get_arch_model(base_arch, wm)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=MOMENTUM, weight_decay=WD)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-
     train_loader = subset_loader(X_train, Y_train, D, BATCH_SIZE, seed)
 
-    # Load checkpoint if exists (for resume)
     start_epoch = 0
-    if checkpoint_path and checkpoint_path.exists():
-        ckpt = torch.load(checkpoint_path, map_location='cpu')
-        model.load_state_dict(ckpt['model'])
-        optimizer.load_state_dict(ckpt['optimizer'])
-        scheduler.load_state_dict(ckpt['scheduler'])
-        start_epoch = ckpt.get('epoch', 0)
-        print(f"  Resuming from epoch {start_epoch}")
+    if ckpt_path and ckpt_path.exists():
+        try:
+            ckpt = torch.load(ckpt_path, map_location='cpu')
+            model.load_state_dict(ckpt['model'])
+            optimizer.load_state_dict(ckpt['optimizer'])
+            scheduler.load_state_dict(ckpt['scheduler'])
+            start_epoch = ckpt.get('epoch', 0)
+            print(f"    Resume ep {start_epoch}", end=" ")
+        except Exception:
+            start_epoch = 0
 
-    results = {
-        'arch': arch_name, 'D': D, 'seed': seed,
-        'epochs': [], 'train_loss': [], 'test_loss': [], 'test_acc': [],
+    result = {
+        'arch': arch_name, 'base_arch': base_arch, 'width_mult': wm,
+        'D': D, 'seed': seed,
+        'epochs_recorded': [], 'train_loss': [], 'test_loss': [], 'test_acc': [],
     }
 
     for ep in range(start_epoch, epochs):
         tloss = train_one_epoch(model, train_loader, optimizer)
         scheduler.step()
-        test_loss, test_acc = evaluate(model, X_test, Y_test)
-        results['epochs'].append(ep + 1)
-        results['train_loss'].append(tloss)
-        results['test_loss'].append(test_loss)
-        results['test_acc'].append(test_acc)
+        tloss_eval, tacc = evaluate(model, X_test, Y_test)
+        result['epochs_recorded'].append(ep + 1)
+        result['train_loss'].append(tloss)
+        result['test_loss'].append(tloss_eval)
+        result['test_acc'].append(tacc)
 
         if (ep + 1) % 10 == 0:
-            print(f"    ep {ep+1:3d}: train_loss={tloss:.4f} test_loss={test_loss:.4f} acc={test_acc:.3f}")
+            print(f"  ep {ep+1:3d}: loss={tloss_eval:.4f} acc={tacc:.3f}", end=" | ")
+            print()
 
     # Save checkpoint
-    if checkpoint_path:
-        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    if ckpt_path:
+        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'scheduler': scheduler.state_dict(),
             'epoch': epochs,
-        }, checkpoint_path)
+            'result': result,
+        }, ckpt_path)
 
-    # Post-training: compute J_topo
+    # J_topo (final)
     weights = [m.weight.data.clone() for m in model.modules()
                if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad]
-    J_topo, eta_vals = compute_J_topo(weights)
+    J_final, _ = compute_J_topo(weights)
 
-    # Also compute at init (by creating a fresh model)
-    model_init = get_arch_model(arch_name)
-    model_init = model_init.cuda() if torch.cuda.is_available() else model_init
+    # J_topo (init — fresh model)
+    model_init = get_arch_model(base_arch, wm)
     weights_init = [m.weight.data.clone() for m in model_init.modules()
-                     if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad]
+                    if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad]
     J_init, _ = compute_J_topo(weights_init)
 
-    results['J_topo_init'] = J_init
-    results['J_topo_final'] = J_topo
-    results['final_test_loss'] = results['test_loss'][-1]
-    results['final_test_acc'] = results['test_acc'][-1]
-    results['params_M'] = sum(p.numel() for p in model.parameters()) / 1e6
+    result['J_topo_init'] = J_init
+    result['J_topo_final'] = J_final
+    result['final_test_loss'] = result['test_loss'][-1]
+    result['final_test_acc'] = result['test_acc'][-1]
+    result['params_M'] = sum(p.numel() for p in model.parameters()) / 1e6
 
-    return results
+    return result
 
 
 # ─────────────────────────────────────────────────────────
@@ -308,10 +474,7 @@ def train_run(arch_name, D, seed, X_train, Y_train, X_test, Y_test,
 # ─────────────────────────────────────────────────────────
 
 def fit_power_law(Ds, losses):
-    """
-    Fit L(D) = α · D^(-β) + E
-    Returns (beta, R2, alpha, E)
-    """
+    """Fit L(D) = α · D^(-β) + E. Returns (β, R2, α, E)."""
     Ds = np.array(Ds, float)
     Ls = np.array(losses, float)
     if len(Ds) < 3:
@@ -345,7 +508,7 @@ def fit_power_law(Ds, losses):
 
 
 # ─────────────────────────────────────────────────────────
-# MAIN EXPERIMENT
+# MAIN
 # ─────────────────────────────────────────────────────────
 
 def run_phase_a():
@@ -356,116 +519,91 @@ def run_phase_a():
     print("=" * 65)
     print("ThermoRG Phase A v2 — CIFAR-10 D-Scaling")
     print(f"Started: {datetime.now().strftime('%H:%M:%S')}")
+    print(f"GPU: {torch.cuda.is_available()}")
     print("=" * 65)
 
-    # Load data
-    print("\nLoading CIFAR-10...")
     X_train, Y_train, X_test, Y_test = load_cifar10()
-    print(f"  Train: {X_train.shape}, Test: {X_test.shape}")
 
-    all_run_results = []
     done_file = OUT_DIR / "completed_runs.json"
-
-    # Load done runs for resume
     if done_file.exists():
         with open(done_file) as f:
             done_runs = set(json.load(f))
-        print(f"  Resuming: {len(done_runs)} runs already completed")
+        print(f"Resume: {len(done_runs)} runs already completed")
     else:
         done_runs = set()
 
+    all_results = []
+
     for arch_cfg in ARCHITECTURES:
-        arch_name = arch_cfg["name"]
-        base_arch = arch_cfg["arch"]
+        an = arch_cfg["Name"]
+        print(f"\n[{an}] ({arch_cfg['arch']}, wm={arch_cfg.get('width_mult',1.0)})")
 
-        print(f"\n[{arch_name}] ({base_arch})")
-
-        arch_run_results = []
         for D in D_VALUES:
             for seed in SEEDS:
-                run_key = f"{arch_name}_D{D}_s{seed}"
+                run_key = f"{an}_D{D}_s{seed}"
                 ckpt_path = CKPT_DIR / f"{run_key}.pt"
 
                 print(f"  D={D}, seed={seed}...", end=" ", flush=True)
 
                 if run_key in done_runs and ckpt_path.exists():
-                    # Load checkpoint to get results
-                    ckpt = torch.load(ckpt_path, map_location='cpu')
-                    run_result = ckpt.get('result', {})
-                    if run_result:
-                        print(f"  [SKIP - already done] loss={run_result.get('final_test_loss', -1):.4f}")
-                        all_run_results.append(run_result)
-                        continue
+                    try:
+                        ckpt = torch.load(ckpt_path, map_location='cpu')
+                        res = ckpt.get('result', {})
+                        if res:
+                            print(f"  [SKIP] loss={res.get('final_test_loss', -1):.4f}")
+                            all_results.append(res)
+                            continue
+                    except Exception:
+                        pass
 
                 try:
-                    result = train_run(
-                        arch_name=base_arch,
-                        D=D, seed=seed,
-                        X_train=X_train, Y_train=Y_train,
-                        X_test=X_test, Y_test=Y_test,
-                        checkpoint_path=ckpt_path
-                    )
-                    # Save result in checkpoint
-                    ckpt = torch.load(ckpt_path, map_location='cpu')
-                    ckpt['result'] = result
-                    torch.save(ckpt, ckpt_path)
-
-                    all_run_results.append(result)
-                    arch_run_results.append(result)
-
-                    # Mark done
+                    res = train_run(arch_cfg, D, seed, X_train, Y_train, X_test, Y_test,
+                                     ckpt_path=ckpt_path)
+                    all_results.append(res)
                     done_runs.add(run_key)
                     with open(done_file, 'w') as f:
                         json.dump(list(done_runs), f)
-
-                    print(f"  loss={result['final_test_loss']:.4f} acc={result['final_test_acc']:.3f} J={result['J_topo_final']:.3f}")
-
+                    print(f"  loss={res['final_test_loss']:.4f} acc={res['final_test_acc']:.3f} J={res['J_topo_final']:.3f}")
                 except Exception as e:
                     print(f"  ERROR: {e}")
                     continue
 
-        # Print per-architecture summary
-        if arch_run_results:
-            losses_D = {D: [] for D in D_VALUES}
-            for r in arch_run_results:
-                losses_D[r['D']].append(r['final_test_loss'])
-
-            avg_final = np.mean([r['final_test_loss'] for r in arch_run_results])
-            print(f"  => avg_final_loss={avg_final:.4f}")
-
-    # ── Aggregate results per architecture ─────────────────
+    # ── Aggregate per architecture ───────────────────────
     print("\n" + "=" * 65)
-    print("FITTING POWER LAWS PER ARCHITECTURE")
+    print("POWER LAW FITS")
     print("=" * 65)
+
+    from scipy import stats
 
     arch_agg = {}
     for arch_cfg in ARCHITECTURES:
-        arch_name = arch_cfg["name"]
-        base_arch = arch_cfg["arch"]
+        an = arch_cfg["Name"]
+        ba = arch_cfg["arch"]
+        wm = arch_cfg.get("width_mult", 1.0)
 
-        # Collect losses by D (average over seeds)
-        losses_by_D = {D: [] for D in D_VALUES}
+        losses_by_D = {d: [] for d in D_VALUES}
         J_init_list, J_final_list = [], []
 
-        for r in all_run_results:
-            if r['arch'] == base_arch:
+        for r in all_results:
+            if r['arch'] == an:
                 losses_by_D[r['D']].append(r['final_test_loss'])
                 J_init_list.append(r['J_topo_init'])
                 J_final_list.append(r['J_topo_final'])
 
+        if not losses_by_D[D_VALUES[0]]:
+            continue
+
         Ds = sorted(losses_by_D.keys())
         Ls = [np.mean(losses_by_D[d]) for d in Ds]
-
         beta, R2, alpha, E_fit = fit_power_law(Ds, Ls)
         J_final = np.mean(J_final_list) if J_final_list else None
         J_init  = np.mean(J_init_list) if J_init_list else None
-        params  = all_run_results[0]['params_M'] if all_run_results else None
+        params  = next((r['params_M'] for r in all_results if r['arch'] == an), None)
 
-        print(f"\n  [{arch_name}] params={params:.2f}M")
-        print(f"    J_topo_init={J_init:.3f}  J_topo_final={J_final:.3f}")
-        print(f"    D-scaling: β={beta:.4f}  α={alpha:.4f}  E={E_fit:.4f}  R²={R2:.3f}")
+        print(f"\n  [{an}] params={params:.2f}M  J_init={J_init:.3f}  J_final={J_final:.3f}")
+        print(f"    β={beta:.4f}  α={alpha:.4f}  E={E_fit:.4f}  R²={R2:.3f}")
 
-        arch_agg[arch_name] = {
+        arch_agg[an] = {
             'params_M': params,
             'J_topo_init': J_init,
             'J_topo_final': J_final,
@@ -473,69 +611,59 @@ def run_phase_a():
             'alpha': alpha,
             'E': E_fit,
             'R2': R2,
-            'd_scaling': {str(d): l for d, l in zip(Ds, Ls)},
+            'd_scaling': {str(d): float(np.mean(losses_by_D[d])) for d in Ds},
         }
 
-    # ── Statistical tests ───────────────────────────────────
+    # ── Statistical tests ─────────────────────────────
     print("\n" + "=" * 65)
     print("STATISTICAL TESTS")
     print("=" * 65)
 
-    from scipy import stats
+    valid = [(n, d) for n, d in arch_agg.items() if d.get('beta') is not None]
 
-    # Filter valid architectures
-    valid = [(name, d) for name, d in arch_agg.items() if d.get('beta') is not None]
     if len(valid) < 3:
-        print(f"  Only {len(valid)} architectures with valid fits — cannot do correlation test")
+        print(f"  Only {len(valid)} architectures with valid fits — cannot test")
     else:
         Js  = np.array([arch_agg[n]['J_topo_final'] for n, d in valid])
-        Bs  = np.array([arch_agg[n]['beta']         for n, d in valid])
-        Als = np.array([arch_agg[n]['alpha']         for n, d in valid])
+        Bs  = np.array([arch_agg[n]['beta']          for n, d in valid])
+        Als = np.array([arch_agg[n]['alpha']           for n, d in valid])
 
-        # H1: β ∝ J_topo
+        # H1: β ∝ J
         r_bj, p_bj = stats.pearsonr(Js, Bs)
-        # H2: α ∝ J_topo²
+        # H2: α ∝ J²
         r_aj2, p_aj2 = stats.pearsonr(Js**2, Als)
+        # H3: J vs loss
+        maxD = str(max(D_VALUES))
+        Lf   = np.array([arch_agg[n]['d_scaling'].get(maxD, float('nan')) for n, d in valid])
+        r_jl, p_jl = stats.pearsonr(Js, Lf)
 
-        print(f"\n  H1: β̂ ∝ J_topo")
-        print(f"    Pearson r = {r_bj:.3f}  p = {p_bj:.4f}")
-        print(f"    {'✓ PASS' if abs(r_bj) > 0.7 and p_bj < 0.05 else '✗ FAIL'}  (threshold: |r|>0.7, p<0.05)")
+        print(f"\n  H1: β̂ ∝ J_topo   r={r_bj:.3f}  p={p_bj:.4f}  {'✓ PASS' if abs(r_bj)>0.7 and p_bj<0.05 else '✗ FAIL'}")
+        print(f"  H2: α̂ ∝ J_topo²  r={r_aj2:.3f}  p={p_aj2:.4f}  {'✓ PASS' if abs(r_aj2)>0.7 and p_aj2<0.05 else '✗ FAIL'}")
+        print(f"  H3: J_topo vs loss  r={r_jl:.3f}  p={p_jl:.4f}  {'✓ (neg)' if r_jl<0 and p_jl<0.1 else '~'}")
 
-        print(f"\n  H2: α̂ ∝ J_topo²")
-        print(f"    Pearson r = {r_aj2:.3f}  p = {p_aj2:.4f}")
-        print(f"    {'✓ PASS' if abs(r_aj2) > 0.7 and p_aj2 < 0.05 else '✗ FAIL'}  (threshold: |r|>0.7, p<0.05)")
+        stats_out = {'H1': {'r': float(r_bj), 'p': float(p_bj)},
+                     'H2': {'r': float(r_aj2), 'p': float(p_aj2)},
+                     'H3': {'r': float(r_jl), 'p': float(p_jl)}}
 
-        # Also: J_topo vs final loss
-        losses_final = np.array([arch_agg[n]['d_scaling'][str(max(D_VALUES))] for n, d in valid])
-        r_jl, p_jl = stats.pearsonr(Js, losses_final)
-        print(f"\n  Bonus: J_topo vs final loss (D=max)")
-        print(f"    Pearson r = {r_jl:.3f}  p = {p_jl:.4f}")
-        print(f"    {'✓ (negative correlation expected)' if r_jl < 0 and p_jl < 0.1 else '~'}")
-
-    # ── Save results ─────────────────────────────────────────
+    # ── Save ─────────────────────────────────────────
     out = {
         'timestamp': datetime.now().isoformat(),
         'config': {
-            'architectures': [a['name'] for a in ARCHITECTURES],
+            'architectures': [a['Name'] for a in ARCHITECTURES],
             'D_values': D_VALUES,
             'seeds': SEEDS,
             'epochs': EPOCHS,
             'lr': LR,
         },
         'archs': [{'name': n, **d} for n, d in arch_agg.items()],
-        'stats': {
-            'H1': {'r': float(r_bj), 'p': float(p_bj)},
-            'H2': {'r': float(r_aj2), 'p': float(p_aj2)},
-        } if len(valid) >= 3 else {},
+        'stats': stats_out if len(valid) >= 3 else {},
     }
 
     out_path = OUT_DIR / 'phase_a_dscaling_results.json'
     with open(out_path, 'w') as f:
         json.dump(out, f, indent=2, default=str)
 
-    print(f"\nSaved: {out_path}")
-    print(f"Total time: {time.time()-t0:.0f}s")
-
+    print(f"\nSaved: {out_path}  ({time.time()-t0:.0f}s)")
     return out
 
 
