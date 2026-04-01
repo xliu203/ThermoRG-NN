@@ -150,52 +150,52 @@ def make_layer(ic, oc, blocks, stride=1):
 
 
 def scale_channels(chs, mult):
-    """Scale channel list by multiplier."""
-    return [max(1, int(c * mult)) for c in chs]
+    """Scale channel list by multiplier, preserving first (input) channel."""
+    return [chs[0]] + [max(1, int(c * mult)) for c in chs[1:]]
 
 
 # ── Model builders ────────────────────────────────────────
 
-def build_TN3(wm=1.0, num_classes=10):
+def build_TN3(wm=1.0, num_classes=10, use_skip=True):
     """ThermoNet-3: [64,64,128,128]"""
     ch = scale_channels([3,64,64,128,128], wm)
     blocks = nn.ModuleList()
     skips = nn.ModuleList()
     for i in range(len(ch)-1):
         blocks.append(ConvBlock(ch[i], ch[i+1], 'gelu', True))
-        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+        skips.append(SkipConnection(ch[i], ch[i+1]) if (i > 0 and use_skip) else None)
     pool = nn.AdaptiveAvgPool2d((1,1))
     fc = nn.Linear(ch[-1], num_classes)
     return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
 
 
-def build_TN5(wm=1.0, num_classes=10):
+def build_TN5(wm=1.0, num_classes=10, use_skip=True):
     """ThermoNet-5: [64,128,256,128,64]"""
     ch = scale_channels([3,64,128,256,128,64], wm)
     blocks = nn.ModuleList()
     skips = nn.ModuleList()
     for i in range(len(ch)-1):
         blocks.append(ConvBlock(ch[i], ch[i+1], 'gelu', True))
-        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+        skips.append(SkipConnection(ch[i], ch[i+1]) if (i > 0 and use_skip) else None)
     pool = nn.AdaptiveAvgPool2d((1,1))
     fc = nn.Linear(ch[-1], num_classes)
     return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
 
 
-def build_TN7(wm=1.0, num_classes=10):
+def build_TN7(wm=1.0, num_classes=10, use_skip=True):
     """ThermoNet-7: [64,64,128,128,256,128,64]"""
     ch = scale_channels([3,64,64,128,128,256,128,64], wm)
     blocks = nn.ModuleList()
     skips = nn.ModuleList()
     for i in range(len(ch)-1):
         blocks.append(ConvBlock(ch[i], ch[i+1], 'tga', True))
-        skips.append(SkipConnection(ch[i], ch[i+1]) if i > 0 else None)
+        skips.append(SkipConnection(ch[i], ch[i+1]) if (i > 0 and use_skip) else None)
     pool = nn.AdaptiveAvgPool2d((1,1))
     fc = nn.Linear(ch[-1], num_classes)
     return nn.Sequential(*([*blocks, pool, nn.Flatten(), fc]))
 
 
-def build_TN9(wm=1.0, num_classes=10):
+def build_TN9(wm=1.0, num_classes=10, use_skip=False):
     """ThermoNet-9: [64]*8 uniform"""
     ch = scale_channels([3]+[64]*8, wm)
     blocks = nn.ModuleList()
@@ -264,10 +264,12 @@ def build_VGG13(num_classes=10):
 
 def get_arch_model(arch_key, width_mult=1.0, num_classes=10):
     """Get model by architecture key."""
+    # When width scaling, disable skip connections to avoid dimension mismatches
+    use_skip = (width_mult >= 1.0)
     builders = {
-        "TN3":  build_TN3,
-        "TN5":  build_TN5,
-        "TN7":  build_TN7,
+        "TN3":  lambda wm: build_TN3(wm=wm, use_skip=use_skip),
+        "TN5":  lambda wm: build_TN5(wm=wm, use_skip=use_skip),
+        "TN7":  lambda wm: build_TN7(wm=wm, use_skip=use_skip),
         "TN9":  build_TN9,
         "R18":  lambda wm=1: build_R18(),
         "R34":  lambda wm=1: build_R34(),
@@ -276,7 +278,7 @@ def get_arch_model(arch_key, width_mult=1.0, num_classes=10):
     }
     if arch_key in ("R18", "R34", "VGG11", "VGG13"):
         return builders[arch_key]()
-    return builders[arch_key](wm=width_mult)
+    return builders[arch_key](width_mult)
 
 
 # ─────────────────────────────────────────────────────────
