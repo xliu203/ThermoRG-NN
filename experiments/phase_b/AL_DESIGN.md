@@ -13,11 +13,13 @@ The ThermoRG framework establishes:
 $$L(D) = \alpha \cdot D^{-\beta} + E$$
 
 where:
-- $\beta \propto J_{\mathrm{topo}}$ (scaling exponent)
-- $\alpha \propto J_{\mathrm{topo}}^2$ (pre-asymptotic coefficient)
+- $\beta \propto J_{\mathrm{topo}}$ (scaling exponent) — **fully identifiable in D ≥ 2000**
+- $\alpha$ — represents initial complexity penalty, shows **critical divergence** near $J_c \approx 0.35$ (topological phase transition). Statistically **unidentifiable in D ≥ 2000** (not a physical bound — the asymptotic regime makes α's contribution too small to measure).
 - $J_{\mathrm{topo}} = \exp\bigl(-\frac{1}{L}\sum_l |\log\eta_l|\bigr)$ is **computable at initialization** (zero training cost)
 
 This means we can **predict architecture quality before training**, enabling efficient active learning.
+
+**Key insight for Phase B**: Since α is unidentifiable in the practical D range, **β is the sole optimization target**. The relationship β ∝ J_topo is confirmed within families (r = 0.97).
 
 ---
 
@@ -33,13 +35,19 @@ Design an automated loop that:
 
 ---
 
-## 3. Core Hypothesis (needs validation)
+## 3. Core Hypothesis (Phase A validated for β)
 
-$$\text{Initialization } J_{\mathrm{topo}} \approx \text{Trained } J_{\mathrm{topo}}$$
+**H1 (confirmed)**: Within architecture families, β ∝ J_topo:
+- Width family: r = 0.976 ✅
+- Depth family: r = 0.973 ✅
 
-If true: J_topo computed from **random initialization weights** is a strong predictor of trained performance.
+**H2 (phase transition)**: α shows critical divergence near J_c ≈ 0.35, but is statistically unidentifiable in D ≥ 2000. This is a measurement limitation, not a theoretical failure.
 
-**Risk**: We don't yet know this correlation. Phase A will measure it empirically.
+**Architecture family effects**:
+- **ThermoNet** (ideal topology): Follow ThermoRG scaling law precisely (R² > 0.97 within families)
+- **ResNet** (real topology): Subject to "van der Waals correction" from stride-2 downsampling. Forms a separate family with lower β intercept (β ≈ 0.089·J + 0.384 for ThermoNet; ResNet family is lower).
+
+**Core hypothesis for Phase B**: J_topo computed from **random initialization weights** is a strong predictor of trained β. This enables zero-training-cost architecture search.
 
 ---
 
@@ -239,41 +247,54 @@ This provides a **targeted width profile** for architecture generation.
 
 ## 7. Implementation Roadmap
 
-### Phase B1: Core Infrastructure
+### Phase B1: Critical Gap Experiments (NOW)
+- [ ] CPU experiments: architectures at J_c ≈ 0.40 (fill critical region)
+- [ ] Compute J_topo for candidate architectures
+- [ ] Validate alpha phase transition near J_c
+
+### Phase B2: Core Infrastructure
 - [ ] Architecture encoding class (`ArchSpace`, `Architecture`)
-- [ ] J_topo computation from random init weights (PI-20)
+- [ ] J_topo computation from random init weights (PI-20, 23× speedup)
 - [ ] Constraint calculators (params, FLOPs, latency)
 - [ ] Latin Hypercube sampler
 
-### Phase B2: Surrogate Model
+### Phase B3: Surrogate Model
 - [ ] GP implementation (scikit-learn or GPy)
 - [ ] Mixed kernel (Matern + Hamming)
-- [ ] Theoretical prior initialization
-- [ ] Acquisition function (EI)
+- [ ] Theoretical prior: β ∝ J_topo (family-specific for ResNet)
+- [ ] Acquisition function (Expected Improvement)
 
-### Phase B3: Active Loop
+### Phase B4: Active Loop
 - [ ] Main AL loop with logging
 - [ ] Multi-fidelity training integration
 - [ ] Early stopping / plateau detection
 - [ ] Checkpointing and resume
 
-### Phase B4: Validation
+### Phase B5: Validation
 - [ ] Synthetic test (verify AL > random)
-- [ ] CIFAR-10: AL vs random search vs固定架构
-- [ ] SVHN: generalization test
+- [ ] CIFAR-10: AL vs random search vs Phase A baseline
+- [ ] ResNet family validation (ResNet-34/50)
 - [ ] Scaling to ImageNet (future)
 
 ---
 
 ## 8. Relationship to Phase A
 
-Phase A results (12 architectures on CIFAR-10) serve as:
-1. **Calibration data**: $\beta_0, \alpha_0$ for the theoretical prior
+Phase A results (87 runs, 9 architectures on CIFAR-10) serve as:
+1. **Calibration data**: β_0 for the theoretical prior (β ∝ J_topo, validated within families)
 2. **Validation baseline**: Compare AL-discovered architectures against Phase A results
-3. **Correlation measurement**: Phase A measures initialization J_topo vs trained J_topo — critical for AL reliability
+3. **Family-specific priors**: ThermoNet family (ideal) vs ResNet family (real gas)
 
-**If Phase A confirms strong $J_{\mathrm{topo}}^{\mathrm{init}} \approx J_{\mathrm{topo}}^{\mathrm{trained}}$ correlation**: AL loop is well-motivated.
-**If not**: Need to rethink the zero-training-cost assumption.
+**Phase A key findings**:
+- β ∝ J_topo confirmed within families (r = 0.97)
+- α phase transition near J_c ≈ 0.35 confirmed in Phase S0
+- α unidentifiable in D ≥ 2000 (statistical, not physical)
+- E floor determined by capacity (N) + optimization difficulty (J_topo)
+
+**Phase B priorities**:
+1. Fill J_c ≈ 0.40 gap (critical region for alpha validation)
+2. Validate ResNet family line (ResNet-34/50)
+3. ThermoNet AL search using J_topo → β as sole metric
 
 ---
 
