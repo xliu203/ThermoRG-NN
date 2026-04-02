@@ -420,11 +420,20 @@ def get_layer_weights_combined(model, arch_key, width_mult=1.0):
 
 def compute_D_eff(W):
     """D_eff = ||W||_F² / λ_max(W)"""
-    fro_sq = (W ** 2).sum().item()
+    W = W.float()
+    # Reshape Conv2d/Linear weights to 2D for spectral analysis
+    if W.dim() == 4:
+        # Conv2d: (out_channels, in_channels, H, W) → (out, in×H×W)
+        W_mat = W.reshape(W.shape[0], -1)
+    elif W.dim() >= 2:
+        W_mat = W.reshape(W.shape[0], -1)
+    else:
+        W_mat = W
+    fro_sq = (W_mat ** 2).sum().item()
     try:
-        spec_max = linalg.svd(W)[1][0].item()
+        spec_max = linalg.svd(W_mat)[1][0].item()
     except Exception:
-        spec_max = W.norm().item() + 1e-12
+        spec_max = W_mat.norm().item() + 1e-12
     return fro_sq / (spec_max ** 2 + 1e-12)
 
 
