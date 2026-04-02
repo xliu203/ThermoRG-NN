@@ -282,8 +282,141 @@ def get_arch_model(arch_key, width_mult=1.0, num_classes=10):
 
 
 # ─────────────────────────────────────────────────────────
-# J_TOPO (v3 formula)
+# J_Topo (v3 formula)
 # ─────────────────────────────────────────────────────────
+
+def _combine_main_skip(main_W, skip_mod):
+    """
+    Build the effective weight for a residual block: W_eff = W_main + W_skip.
+
+    W_main: weight tensor of main branch (Conv2d or Linear)
+    skip_mod: nn.Identity or projection Conv2d
+
+    Theory: y = F(x) + S(x). The combined information is preserved through the skip.
+    - Identity skip (ic == oc, stride=1): W_eff = W_main + I
+    - Projection skip (stride>1 or ic!=oc): the skip changes dimensions, so it
+      doesn't directly add to W_main. We model this by noting the skip preserves
+      info (D_eff contribution ≈ 1), but for the W_eff we just return W_main.
+
+    The key insight: for identity skip, the skip doubles the dominant singular
+    value → W_main + I raises D_eff. For projection skip, the skip is a different
+    linear map on a different input; we capture this by noting the skip path
+    contributes additional effective dimension.
+    """
+    if isinstance(skip_mod, nn.Identity):
+        W = main_W.float()
+        if W.dim() == 4:
+            out_ch, in_ch = W.shape[0], W.shape[1]
+            I = torch.eye(out_ch, in_ch, dtype=W.dtype, device=W.device).view(out_ch, in_ch, 1, 1)
+        elif W.dim() == 2:
+            I = torch.eye(W.shape[0], W.shape[1], dtype=W.dtype, device=W.device)
+        else:
+            return W
+        return W + I
+    else:
+        # Projection skip: W_skip != I. The skip operates on the input x
+        # (not the main path output), so it doesn't directly add to W_main.
+        # Return W_main as-is. The information-theoretic contribution of
+        # the skip is captured separately in J_topo via the η_l ratio.
+        return main_W.float()
+
+
+def get_layer_weights_combined(model, arch_key, width_mult=1.0):
+    """
+    Extract per-layer weights from a model, combining main branch + skip branch
+    for residual blocks using W_eff = W_main + W_skip (ThermoRG skip extension).
+    
+    Returns a list of weight tensors (one per logical layer), ready for compute_J_topo.
+    
+    arch_key examples: 'TN-W8', 'TN-L3', 'R18', 'VGG11', etc.
+    """
+    # Get the architecture type
+    is_thermonet = arch_key.startswith('TN-')
+    is_resnet    = arch_key.startswith('R')
+    is_vgg       = arch_key.startswith('VGG')
+    
+    weights = []
+    
+    if is_thermonet:
+        # ThermoNet: flat Sequential of ConvBlock + pool/Flatten/Linear.
+        # SkipConnections are stored separately in model.skips (ModuleList).
+        # The skip forward is: x + skips[i](x), applied AFTER block i.
+        # For layer i (i>0): W_eff = W_main + W_skip (identity).
+        # For layer 0: no skip.
+        blocks = getattr(model, 'blocks', None)   # ModuleList
+        skips  = getattr(model, 'skips',  None)   # ModuleList
+
+        if blocks is None:
+            # Fallback: iterate Sequential children directly
+            for m in model.modules():
+                if isinstance(m, ConvBlock):
+                    # Direct conv attribute (not iterating all submodules)
+                    weights.append(m.conv.weight.data.clone().float())
+                elif isinstance(m, nn.Linear):
+                    weights.append(m.weight.data.clone().float())
+            return weights
+
+        for i, block in enumerate(blocks):
+            # Direct conv attribute — no iterating over all submodules (avoids LayerNorm)
+            main_W = block.conv.weight.data.clone()
+
+            # Skip: model.skips[i] is None for i==0 (no skip at first layer)
+            skip_mod = None
+            if skips is not None and i > 0 and skips[i] is not None:
+                skip_mod = skips[i].skip
+
+            if skip_mod is not None:
+                W_eff = _combine_main_skip(main_W, skip_mod)
+            else:
+                W_eff = main_W.float()
+            weights.append(W_eff)
+
+        # Final classifier
+        if hasattr(model, 'fc') and isinstance(model.fc, nn.Linear):
+            weights.append(model.fc.weight.data.clone().float())
+    
+    elif is_resnet:
+        # ResNet: Sequential with BasicBlocks. Each BasicBlock has .conv1, .conv2, .downsample
+        # We need to process per BasicBlock
+        seq_children = list(model.children())
+        block_idx = 0
+        for child in seq_children:
+            if isinstance(child, nn.Sequential):
+                for block in child.children():
+                    if isinstance(block, BasicBlock):
+                        # Main branch: conv2 weight (second conv, the one before addition)
+                        main_W = block.conv2.weight.data.clone().float()
+                        
+                        # Skip: downsample if present, else Identity
+                        downsample = block.downsample
+                        if downsample is not None:
+                            # downsample is a Sequential: [Conv2d, BN]
+                            # The Conv2d weight is the projection
+                            skip_mod = downsample[0]  # Conv2d
+                        else:
+                            skip_mod = nn.Identity()
+                        
+                        W_eff = _combine_main_skip(main_W, skip_mod)
+                        weights.append(W_eff)
+                        block_idx += 1
+            elif isinstance(child, (nn.Conv2d, nn.Linear)) and not isinstance(child, (nn.Sequential, nn.ModuleList)):
+                # Initial conv, final fc
+                if child.weight.requires_grad:
+                    weights.append(child.weight.data.clone().float())
+    
+    elif is_vgg:
+        # VGG: no skip connections — just collect conv and fc weights
+        for m in model.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad:
+                weights.append(m.weight.data.clone().float())
+    
+    else:
+        # Unknown architecture: flat extraction
+        return [p.data.clone() for p in model.parameters()
+                if p.dim() >= 2 and p.requires_grad]
+    
+    return weights
+
 
 def compute_D_eff(W):
     """D_eff = ||W||_F² / λ_max(W)"""
@@ -458,15 +591,13 @@ def train_run(arch_cfg, D, seed, X_train, Y_train, X_test, Y_test,
             'result': result,
         }, ckpt_path)
 
-    # J_topo (final)
-    weights = [m.weight.data.clone() for m in model.modules()
-               if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad]
-    J_final, _ = compute_J_topo(weights)
+    # J_topo (final) — uses W_eff = W_main + W_skip for residual blocks
+    weights_final = get_layer_weights_combined(model, base_arch, wm)
+    J_final, _ = compute_J_topo(weights_final)
 
     # J_topo (init — fresh model)
     model_init = get_arch_model(base_arch, wm)
-    weights_init = [m.weight.data.clone() for m in model_init.modules()
-                    if isinstance(m, (nn.Conv2d, nn.Linear)) and m.weight.requires_grad]
+    weights_init = get_layer_weights_combined(model_init, base_arch, wm)
     J_init, _ = compute_J_topo(weights_init)
 
     result['J_topo_init'] = J_init
