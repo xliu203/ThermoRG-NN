@@ -401,13 +401,20 @@ def train_run(arch_cfg, D, seed, X_train, Y_train, X_test, Y_test,
     base_arch = arch_cfg["arch"]
     wm = arch_cfg.get("width_mult", 1.0)
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    model = get_arch_model(base_arch, wm).cuda() if torch.cuda.is_available() else get_arch_model(base_arch, wm)
+    model = get_arch_model(base_arch, wm).to(device)
+    # Move data to device
+    X_train_d = X_train.to(device)
+    Y_train_d = Y_train.to(device)
+    X_test_d  = X_test.to(device)
+    Y_test_d  = Y_test.to(device)
+
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=MOMENTUM, weight_decay=WD)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-    train_loader = subset_loader(X_train, Y_train, D, BATCH_SIZE, seed)
+    train_loader = subset_loader(X_train_d, Y_train_d, D, BATCH_SIZE, seed)
 
     start_epoch = 0
     if ckpt_path and ckpt_path.exists():
@@ -430,7 +437,7 @@ def train_run(arch_cfg, D, seed, X_train, Y_train, X_test, Y_test,
     for ep in range(start_epoch, epochs):
         tloss = train_one_epoch(model, train_loader, optimizer)
         scheduler.step()
-        tloss_eval, tacc = evaluate(model, X_test, Y_test)
+        tloss_eval, tacc = evaluate(model, X_test_d, Y_test_d)
         result['epochs_recorded'].append(ep + 1)
         result['train_loss'].append(tloss)
         result['test_loss'].append(tloss_eval)
