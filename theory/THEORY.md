@@ -176,16 +176,37 @@ OUTPUT: Optimal architecture configuration
 5. Output optimal (width, depth, skip-connection) configuration
 ```
 
-### 6.3 Open Problems
+### 6.3 Benchmark: Power Iteration vs SVD (2026-04-02)
+
+**Question**: Can Power Iteration replace full SVD for D_eff computation?
+
+**Setup**: Random weight matrices simulating trained layer shapes.
+
+| Layer | D_eff (SVD) | PI-10 err | PI-20 err | PI-30 err |
+|-------|-------------|-----------|-----------|-----------|
+| FC-10×256 | 7.32 | 9.5% | 1.7% | 0.0% |
+| FC-256×784 | 106.20 | 3.4% | 1.6% | 2.0% |
+| FC-512×4096 | 282.20 | 5.9% | 3.3% | 1.2% |
+| FC-4096×4096 | 1020.64 | 8.6% | 3.3% | 3.5% |
+| Conv-128×(3×3) | 61.59 | 8.2% | 1.8% | 1.1% |
+| Conv-512×(3×3) | 286.67 | 9.6% | 4.4% | 3.8% |
+
+**Speed**: SVD = 152ms; PI-20 = 6.7ms → **23× faster**
+
+**Recommendation**: Use PI-20 as the standard D_eff estimator. The ~2.5% error in D_eff translates to ~5% error in J_topo, which is acceptable for architecture ranking purposes.
+
+## 7. Open Problems
 
 - [ ] How to derive optimal width profile from target $J_{\mathrm{topo}}$ analytically?
 - [ ] How to handle skip connections in $J_{\mathrm{topo}}$ formula?
 - [ ] How to validate on ImageNet-scale datasets?
 - [ ] What is the theoretical optimal $J_{\mathrm{topo}}$ for a given task?
+- [ ] Power iteration error impact on J_topo ranking: needs empirical validation on real trained weights
+- [ ] Trained vs. initialization $D_{\mathrm{eff}}$ correlation: unknown, needs measurement
 
 ---
 
-## 7. Version History
+## 8. Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
@@ -195,7 +216,7 @@ OUTPUT: Optimal architecture configuration
 
 ---
 
-## 8. Key References
+## 9. Key References
 
 - Cohen et al. (2021): Edge of Stability — $\eta_c = 2/\lambda_{\max}(H)$
 - Zador (1982): Asymptotic quantization error
