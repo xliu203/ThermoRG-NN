@@ -1,9 +1,15 @@
 # Phase A Complete Results
 
-> **Date**: 2026-04-02
+> **Date**: 2026-04-02 (corrected 2026-04-03)
 > **Data**: 87 runs, 9 architectures, D ∈ {2000, 5000, 10000, 25000, 50000}
-> **Framework**: ThermoRG (THEORY.md v3-ext)
+> **Framework**: ThermoRG (THEORY.md v5)
 > **Code**: `experiments/phase_a/phase_a_dscaling.py`
+
+> **⚠️ Correction (v5, 2026-04-03)**: The original analysis reported β ∝ J_topo (r=0.66) and α hitting bound at 20. Re-analysis with corrected α bounds (α_max=500) reveals:
+> - β ∝ J was an **artifact** of the restrictive α bound = 20. Corrected r(β, J) = 0.03.
+> - The **valid** correlation is **J_topo → E_floor** (r = 0.83).
+> - α varies 82–500 across ThermoNet architectures (not the constant ~20 previously reported).
+> - Full analysis in `theory/THEORY.md` v5.
 
 ---
 
