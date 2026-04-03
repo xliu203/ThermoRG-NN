@@ -323,3 +323,79 @@ Phase A results (87 runs, 9 architectures on CIFAR-10) serve as:
 - Phase A: `experiments/phase_a/` (CIFAR-10 validation, complete)
 - Active Learning: Bayesian Optimization principles (Mockus 1978, Snoek 2012)
 - NAS: enas, DARTS, Once-for-All — connection is that we replace differentiable relaxation with J_topo surrogate
+
+---
+
+## 4. Theory-Grounded General Selection Algorithm (v6, 2026-04-03)
+
+### 4.1 Problem with Empirical Thresholds
+
+Previous approach suggested `params_M < 2M` as an empirical threshold for CIFAR-10. This is dataset-specific and not theoretically grounded.
+
+### 4.2 Two-Metric Filter (Dataset-General)
+
+We use **two theoretically-motivated filters**:
+
+**Filter A — Information Flow Mismatch:**
+$$J_\mathrm{topo} > 0.5$$
+
+- Below 0.5: information flow is too non-uniform, architecture is topologically mismatched
+- Threshold comes from RFF critical point J_c ≈ 0.35, with safety margin
+- Computed from initialization weights only (~1ms per architecture)
+- **Dataset-general**: depends only on architecture, not data
+
+**Filter B — Over-Parameterization Bound (from covering numbers):**
+$$D_\mathrm{eff,total} \leq d_\mathrm{manifold} \cdot (\log N + 1)$$
+
+- Derived from covering number theory: ε-covering of d-manifold requires ~(R/ε)^d cells
+- Setting ε ~ 1/√N (statistical learning) gives log(1/ε) = O(log N)
+- d_manifold: intrinsic data dimension (estimated from data via PCA)
+- N: number of training samples
+- **Dataset-general**: automatically adapts to any dataset size and intrinsic dimension
+
+### 4.3 Algorithm
+
+```python
+def ThermoRG_Select(dataset, candidates):
+    # 1. Estimate data manifold dimension
+    d_manifold = estimate_d_manifold(dataset)  # PCA 95% variance
+    
+    # 2. Compute capacity bound
+    capacity_bound = d_manifold * (log(len(dataset)) + 1)
+    
+    # 3. Evaluate each candidate
+    for arch in candidates:
+        # Compute from initialization only (no training)
+        J_topo = compute_J_topo(arch)
+        D_eff_total = compute_D_eff_total(arch)
+        
+        # Apply theory-based filters
+        passes = (J_topo > 0.5) and (D_eff_total <= capacity_bound)
+        
+        # Rank by J_topo (higher = better information flow)
+        arch.score = J_topo
+    
+    # 4. Return candidates passing filter, ranked by J_topo
+    return sorted(passing_candidates, key=lambda a: a.score, reverse=True)
+```
+
+### 4.4 CIFAR-10 Specific Values
+
+| Parameter | Value | Derivation |
+|-----------|-------|-----------|
+| d_manifold | ≈50 | PCA 95% variance |
+| N | 50,000 | CIFAR-10 training set |
+| log N | 10.8 | Natural log |
+| **Capacity bound** | **≈590** | 50 × 11.8 |
+
+Compare: TN-W64 (D_eff ≈ 3000) would fail Filter B automatically on CIFAR-10, even without specifying params_M < 2M.
+
+### 4.5 Why This Is Better
+
+| Approach | Threshold | Problem |
+|----------|-----------|---------|
+| Empirical | params_M < 2M | Dataset-specific, no theory |
+| **Theory-grounded** | D_eff <= d_manifold × (log N + 1) | **Adapts to any dataset** |
+
+The algorithm automatically adapts to ImageNet (larger N, larger d_manifold) without any retuning.
+
