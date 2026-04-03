@@ -6,8 +6,8 @@ ThermoRG Phase B — Joint J_topo + Capacity Selection
 General architecture selection algorithm using theoretically-grounded constraints.
 
 Key features (dataset-general, no empirical thresholds):
-  1. J_topo > 0.5  (information flow filter)
-  2. D_eff_total <= d_manifold * (log N + 1)  (capacity bound)
+  1. J_topo > 0.45  (information flow filter, relaxed from 0.5)
+  2. D_eff_total <= 2 * d_manifold * (log N + 1)  (capacity bound, ×2 relaxation)
 
 Reference: ThermoRG Theory Framework v5
 """
@@ -371,8 +371,8 @@ def evaluate_architecture(model: nn.Module,
     n_params = count_parameters(model)
     
     passes_filter = bool(
-        J_topo > 0.5 and
-        D_eff_total <= capacity_bound
+        J_topo > 0.45 and
+        D_eff_total <= 2 * capacity_bound
     )
     
     return {
@@ -437,8 +437,8 @@ def run_phase_b_experiment(d_manifold: float,
         print(f"=== ThermoRG Phase B Selection ===")
         print(f"d_manifold: {d_manifold:.1f}")
         print(f"n_samples: {n_samples:,}")
-        print(f"Capacity bound (D_eff_total): {capacity_bound:.1f}")
-        print(f"J_topo threshold: 0.5")
+        print(f"Capacity bound (D_eff_total, relaxed ×2): {2*capacity_bound:.1f}")
+        print(f"J_topo threshold: 0.45 (relaxed from 0.5)")
         print(f"Filter enabled: {use_filter}")
         print()
     

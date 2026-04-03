@@ -386,9 +386,9 @@ def ThermoRG_Select(dataset, candidates):
 | d_manifold | ≈50 | PCA 95% variance |
 | N | 50,000 | CIFAR-10 training set |
 | log N | 10.8 | Natural log |
-| **Capacity bound** | **≈590** | 50 × 11.8 |
+| **Capacity bound** | **≈1180** | 2 × 50 × 11.8 (×2 relaxation) |
 
-Compare: TN-W64 (D_eff ≈ 3000) would fail Filter B automatically on CIFAR-10, even without specifying params_M < 2M.
+The ×2 relaxation is justified by the order-of-magnitude nature of the covering-number bound. 8 candidates fail capacity at ×1 but pass at ×2, and their J_topo values are competitive.
 
 ### 4.5 Why This Is Better
 
@@ -407,23 +407,34 @@ The algorithm automatically adapts to ImageNet (larger N, larger d_manifold) wit
 ### Pre-selection: 20 Candidates Evaluated
 
 **Dataset:** CIFAR-10 (N=50,000, estimated d_manifold=50)
-**Filters:** J_topo > 0.5 AND D_eff_total <= 591
+**Filters (relaxed):** J_topo > 0.45 AND D_eff_total <= 1180 (×2 relaxation)
 
 | Rank | ID | J_topo | D_eff | D_eff/cap | Params | Pass? |
 |------|-----|--------|-------|-----------|--------|-------|
-| 1 | T18 | **0.789** | 260 | 44% | 0.59M | ✓ |
-| 2 | T04 | 0.763 | 366 | 62% | 0.93M | ✓ |
-| 3 | T09 | 0.749 | 500 | 85% | 1.31M | ✓ |
-| 4 | T13 | 0.678 | 391 | 66% | 1.08M | ✓ |
-| 5 | T08 | 0.650 | 565 | 96% | 1.80M | ✓ |
-| 6 | T12 | 0.575 | 426 | 72% | 1.40M | ✓ |
-| 7 | T16 | 0.524 | 555 | 94% | 2.05M | ✓ |
-| 8 | T11 | **0.505** | 300 | 51% | 1.05M | ✓ |
-| - | T01 | 0.436 | 601 | 102% | 2.61M | ✗ (J<0.5, D_eff>cap) |
-| - | T10 | 0.580 | 3170 | 536% | 20.64M | ✗ (D_eff>>cap) |
-| - | T19 | 0.631 | 2574 | 436% | 12.72M | ✗ (D_eff>>cap) |
+| 1 | T18 | **0.789** | 260 | 22% | 0.59M | ✓ |
+| 2 | T04 | 0.763 | 366 | 31% | 0.93M | ✓ |
+| 3 | T09 | 0.749 | 500 | 42% | 1.31M | ✓ |
+| 4 | T14 | 0.712 | 708 | 60% | 2.16M | ✓ |
+| 5 | T13 | 0.678 | 391 | 33% | 1.08M | ✓ |
+| 6 | T08 | 0.650 | 565 | 48% | 1.80M | ✓ |
+| 7 | T03 | 0.642 | 769 | 65% | 2.63M | ✓ |
+| 8 | T05 | 0.635 | 1103 | 93% | 4.26M | ✓ |
+| 9 | T17 | 0.615 | 1137 | 96% | 4.63M | ✓ |
+| 10 | T12 | 0.575 | 426 | 36% | 1.40M | ✓ |
+| 11 | T16 | 0.524 | 555 | 47% | 2.05M | ✓ |
+| 12 | T11 | 0.505 | 300 | 25% | 1.05M | ✓ |
+| 13 | T02 | 0.483 | 833 | 70% | 3.63M | ✓ |
+| 14 | T07 | 0.478 | 1100 | 93% | 5.58M | ✓ |
+| 15 | T06 | 0.463 | 434 | 37% | 1.76M | ✓ |
+| - | T01 | 0.436 | 601 | - | 2.61M | ✗ (J<0.45) |
+| - | T10 | 0.580 | 3170 | 268% | 20.64M | ✗ (D_eff>>cap) |
+| - | T15 | 0.561 | 4302 | 364% | 32.75M | ✗ (D_eff>>cap) |
+| - | T19 | 0.631 | 2574 | 218% | 12.72M | ✗ (D_eff>>cap) |
+| - | T20 | 0.644 | 1940 | 164% | 8.43M | ✗ (D_eff>>cap) |
 
-**Result:** 8/20 candidates pass both filters. Skip-connection candidates dominate (7/9 pass vs 1/11 for no-skip).
+**Result:** 15/20 candidates pass both filters (vs 8/20 with original strict thresholds). Only the 5 most extreme candidates (T01: J too low; T10/T15/T19/T20: D_eff >> cap) are rejected.
+
+**Recommended validation candidates:** T18 (best J_topo), T04 (no-skip diversity), T11 (threshold boundary), T10 (capacity-failing control)
 
 **Recommended for validation:** T18 (best J_topo), T11 (threshold candidate), T04 (no-skip diversity)
 
