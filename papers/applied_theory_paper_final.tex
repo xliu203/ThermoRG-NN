@@ -927,12 +927,24 @@ For practitioners, ThermoRG-AL (the active learning framework enabled by these f
 
 The distinction between ThermoNet (idealized topology) and ResNet (real topology with spatial compression) as separate architecture families raises an important generalization question. Real-world architectures like EfficientNet, ConvNeXt, and Vision Transformers each have their own `real gas' corrections that would modify the $J_\mathrm{topo} \to E_\mathrm{floor}$ mapping. Calibrating this mapping for each family is a prerequisite for reliable prediction; applying a mapping trained on ThermoNet to a Vision Transformer would likely degrade performance. Future work should systematically map these family-specific corrections.
 
+
+\subsection{Mechanistic Interpretation of the $J_\mathrm{topo} \to E_\mathrm{floor}$ Channel}
+\label{sec:mechanistic_interpretation}
+
+While the correlation $r(J_\mathrm{topo}, E_\mathrm{floor}) = 0.83$ is empirically validated, a full first-principles derivation from initialization geometry to trained loss remains an open theoretical challenge. Here we provide a speculative mechanistic sketch using information-theoretic language.
+
+The topological Jacobian $J_\mathrm{topo} = \exp(-\frac{1}{L}\sum_l|\log\eta_l|)$ measures the geometric mean of per-layer dimension expansion ratios. When $J_\mathrm{topo}$ is low (some layers have $\eta_l \gg 1$, others $\eta_l \ll 1$), the network processes information across a wider range of representational scales. We hypothesize this diversity of scales creates a richer loss landscape with more accessible low-loss basins, translating to a lower $E_\mathrm{floor}$. Conversely, when $J_\mathrm{topo} \to 1$ (all $\eta_l \approx 1$), all layers operate at similar representational scales, limiting the diversity of learned features and potentially concentrating the loss landscape in fewer, higher-loss basins.
+
+This interpretation is consistent with the observation that skip connections — which equalize effective per-layer capacity — tend to lower $J_\mathrm{topo}$ and improve final performance. The Fisher-Rao metric on the space of distributions induced by each layer's transformation provides a natural geometric framework for formalizing this intuition: $J_\mathrm{topo}$ can be viewed as measuring the total curvature of the information manifold traversed by the forward pass, and larger curvature implies greater representational diversity, which in turn correlates with lower achievable loss floors.
+
+A rigorous derivation for nonlinear networks would require treating the trained network's loss landscape as a random function whose curvature statistics are determined by the initial weight distribution — a problem akin to computing ground-state energies in disordered spin systems. For now, we leave this as a principled speculation to be confirmed by future theoretical work.
+
 \subsection{Limitations}
 \label{subsec:limitations}
 
 \textbf{An important correction from Phase A analysis.} During review, we identified and corrected an important fitting artifact: the apparent $\beta \propto J_\mathrm{topo}$ correlation ($r = 0.66$) reported in early Phase A analysis was an artifact of the fitter's restrictive $\alpha$ upper bound of 20. Correcting to $\alpha_\max = 500$ reveals the true $r(\beta, J) = 0.03$. The validated relationship is $J_\mathrm{topo} \to E_\mathrm{floor}$ ($r = 0.83$), not $J_\mathrm{topo} \to \beta$. This correction has been propagated throughout the paper.\n\nThe thermodynamic profiling framework, while theoretically grounded and empirically validated, has several limitations that warrant discussion.
 
-\textbf{Mean‑field approximation.} The unified scaling law relies on mean‑field approximations that treat gradient noise as isotropic and homogeneous. In practice, SGD noise exhibits complex anisotropic and parameter‑dependent structure, which may affect the precise scaling exponents, especially for small batch sizes or highly non‑convex loss landscapes.
+\textbf{Alpha regularization in real architectures.} In RFF networks, $\alpha$ diverges over three orders of magnitude near $J_c \approx 0.35$. In real architectures (ThermoNet, ResNet), $\alpha$ is regularized to the range $[82, 500]$ by structural constraints including skip connections, LayerNorm, and nonlinear activations. A precise theoretical account of this regularization mechanism — why and how these architectural features impose an upper bound on $\alpha$ — remains an open problem.\n\n\textbf{Mean‑field approximation.} The unified scaling law relies on mean‑field approximations that treat gradient noise as isotropic and homogeneous. In practice, SGD noise exhibits complex anisotropic and parameter‑dependent structure, which may affect the precise scaling exponents, especially for small batch sizes or highly non‑convex loss landscapes.
 
 \textbf{Isotropic noise assumption.} The definition of effective temperature $T_{\text{eff}}$ assumes isotropic gradient noise covariance. This simplification ignores the directional structure of noise, which could modify the exploration dynamics near critical points and alter the optimal cooling schedule predicted by Theorem~\ref{thm:optimal-temp}.
 
@@ -943,6 +955,24 @@ The distinction between ThermoNet (idealized topology) and ResNet (real topology
 \textbf{SSM discretization error bound.} The SSM discretization gap analyzed in Proposition~\ref{prop:ssm_discrete} of the companion paper provides an $\mathcal{O}(\Delta t^2)$ error bound for compression efficiency, but the constant $C$ depends on matrix properties that may vary across layers and training steps. A rigorous upper bound on the cumulative discretization error across many layers remains an open problem.
 
 \textbf{Other known limitations.} The framework assumes the data manifold is sufficiently regular to admit a well‑defined intrinsic dimension; for highly discontinuous or fractal data distributions, the concept of $d_{\text{manifold}}$ may not be well‑defined. Additionally, the theory does not yet incorporate finite‑width effects, which can cause deviations from the thermodynamic limit in practice. The coupling correction factor $\epsilon(\text{Coupling})$ is treated only perturbatively; strong coupling between architectural and thermodynamic fluctuations could lead to non‑multiplicative corrections not captured by the current formulation.
+
+
+\subsection{Future Work}
+\label{sec:future_work}
+
+The validated framework opens several natural directions for future investigation:
+
+\begin{itemize}
+    \item \textbf{First-principles derivation of $J_\mathrm{topo} \to E_\mathrm{floor}$.} A rigorous statistical-mechanical treatment — possibly via the replica method or random matrix theory — that connects initialization geometry to the expected loss at convergence would complete the theoretical picture. A toy model (deep linear networks with Gaussian data) may serve as a first step.
+    
+    \item \textbf{Family-specific corrections.} The $J_\mathrm{topo} \to E_\mathrm{floor}$ mapping calibrated on ThermoNet should be re-calibrated for other architecture families: Vision Transformers, State Space Models (Mamba), ConvNeXt, and hybrid architectures. Each family introduces its own `real gas' corrections analogous to ResNet's stride-induced volume compression.
+    
+    \item \textbf{Larger-scale validation.} Validating ThermoRG-AL on ImageNet-scale tasks (with appropriate budget allocation) would confirm whether the zero-cost $J_\mathrm{topo}$ surrogate remains predictive at larger compute regimes. Theory suggests the correlation may strengthen as D increases and finite-width effects diminish.
+    
+    \item \textbf{Theoretical account of alpha regularization.} Understanding precisely why skip connections, LayerNorm, and finite width impose an upper bound on $\alpha$ in real architectures — and whether this bound is universal across architecture families — would deepen the theory's predictive power.
+    
+    \item \textbf{ThermoRG-AL at scale.} Implementing and benchmarking the full ThermoRG-AL active learning loop (GP surrogate, EI acquisition, multi-fidelity training) against random search and differentiable NAS methods on a standardized benchmark would establish the practical efficiency gain quantitatively.
+\end{itemize}
 
 \subsection{Conclusion}
 In conclusion, this paper presents a unified SMC theory that transitions neural architecture design from empirical searching to physics‑guided analytical computation. By defining thermodynamic compression efficiency and establishing the unified scaling law, we provide powerful thermodynamic profiling tools for future large‑scale AI system designs. Furthermore, our framework naturally accommodates specialized symmetries, such as extending to rotation-equivariant architectures via quaternion-valued manifolds (detailed in \cref{app:quaternion-constraints}). The experimental validation demonstrates that the theory captures essential scaling behaviors without requiring costly training runs, opening a path toward principled, data‑efficient architecture discovery.
