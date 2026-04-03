@@ -1,7 +1,7 @@
 # ThermoRG Active Learning Loop — Design Document
 
-> **Status**: Design draft (2026-04-02)  
-> **Author**: ThermoRG Team (theory + DeepSeek Reasoner)  
+> **Status**: Design draft (v5, 2026-04-03)
+> **Author**: ThermoRG Team (theory + DeepSeek Reasoner)
 > **Purpose**: Complete algorithmic design for automated architecture search via J_topo-driven active learning
 
 ---
@@ -12,14 +12,15 @@ The ThermoRG framework establishes:
 
 $$L(D) = \alpha \cdot D^{-\beta} + E$$
 
-where:
-- $\beta \propto J_{\mathrm{topo}}$ (scaling exponent) — **fully identifiable in D ≥ 2000**
-- $\alpha$ — represents initial complexity penalty, shows **critical divergence** near $J_c \approx 0.35$ (topological phase transition). Statistically **unidentifiable in D ≥ 2000** (not a physical bound — the asymptotic regime makes α's contribution too small to measure).
-- $J_{\mathrm{topo}} = \exp\bigl(-\frac{1}{L}\sum_l |\log\eta_l|\bigr)$ is **computable at initialization** (zero training cost)
+**What J_topo actually controls** (corrected from Phase A re-analysis, 2026-04-03):
 
-This means we can **predict architecture quality before training**, enabling efficient active learning.
+| Parameter | Controlled by J_topo? | Evidence |
+|-----------|---------------------|---------|
+| $\alpha$ | ❌ No (RFF only) | Phase S0: diverges near J_c; ThermoNet: regularized (82–500), not J-controlled |
+| $\beta$ | ❌ No (ThermoNet) | Phase A: r(β, J) = 0.03 (was artifact of fitter bound) |
+| **$E_\mathrm{floor}$** | **✅ YES** | Phase A: **r(J, E) = 0.83** |
 
-**Key insight for Phase B**: Since α is unidentifiable in the practical D range, **β is the sole optimization target**. The relationship β ∝ J_topo is confirmed within families (r = 0.97).
+**Key insight for Phase B**: The actionable relationship is **$J_\mathrm{topo} \to E_\mathrm{floor}$** — lower J_topo → lower E_floor → better final performance. This is the **primary optimization target** for architecture search.
 
 ---
 
@@ -27,7 +28,7 @@ This means we can **predict architecture quality before training**, enabling eff
 
 Design an automated loop that:
 1. Explores architecture space under resource constraints (params, FLOPs, latency)
-2. Uses J_topo as a cheap surrogate to rank architectures
+2. Uses J_topo as a cheap surrogate to predict E_floor (zero training cost)
 3. Trains only the most promising candidates
 4. Learns from training feedback to improve predictions
 
@@ -35,19 +36,25 @@ Design an automated loop that:
 
 ---
 
-## 3. Core Hypothesis (Phase A validated for β)
+## 3. Core Hypothesis (Phase A validated, v5)
 
-**H1 (confirmed)**: Within architecture families, β ∝ J_topo:
-- Width family: r = 0.976 ✅
-- Depth family: r = 0.973 ✅
+**H1 (corrected)**: $J_\mathrm{topo}$ predicts $E_\mathrm{floor}$ for ThermoNet:
+- r(J, E) = 0.83 across ThermoNet families ✅
+- Lower J_topo → lower E_floor → better performance
 
-**H2 (phase transition)**: α shows critical divergence near J_c ≈ 0.35, but is statistically unidentifiable in D ≥ 2000. This is a measurement limitation, not a theoretical failure.
+**H2 (corrected)**: $\beta$ is NOT directly J-controlled in real architectures:
+- Original Phase A r(β, J) = 0.66 was an **artifact of restrictive α bound = 20**
+- Corrected r(β, J) = 0.03 — no real correlation
+- $\beta$ is architecture-dependent but not J_topo-controlled
 
-**Architecture family effects**:
-- **ThermoNet** (ideal topology): Follow ThermoRG scaling law precisely (R² > 0.97 within families)
-- **ResNet** (real topology): Subject to "van der Waals correction" from stride-2 downsampling. Forms a separate family with lower β intercept (β ≈ 0.089·J + 0.384 for ThermoNet; ResNet family is lower).
+**H3 (alpha phase transition)**: Validated in RFF networks only:
+- Phase S0: α jumps 220× (15→22000) near J_c ≈ 0.35
+- Phase A: α is regularized by skip connections, LayerNorm → bounded (82–500)
+- Not actionable for ThermoNet architecture search
 
-**Core hypothesis for Phase B**: J_topo computed from **random initialization weights** is a strong predictor of trained β. This enables zero-training-cost architecture search.
+**H4 (architecture families)**:
+- **ThermoNet** (ideal topology): Follow ThermoRG scaling law (R² > 0.95), J_topo → E_floor validated
+- **ResNet** (real topology): Subject to "van der Waals correction" from stride-2 downsampling. Forms a separate family with own parameters.
 
 ---
 
@@ -61,8 +68,8 @@ ThermoRG-AL(D_dataset, budget, constraints)
 ├─ PHASE 1: Initialization (cold start)
 │   ├─ Sample N_init architectures (Latin Hypercube)
 │   ├─ Compute J_topo at initialization for all
-│   ├─ Train N_cal subset for N_cal_epochs (establish J_topo→loss mapping)
-│   └─ Fit GP surrogate: arch_features → (J_topo, loss)
+│   ├─ Train N_cal subset for N_cal_epochs (establish J_topo→E mapping)
+│   └─ Fit GP surrogate: arch_features → (J_topo, E_floor)
 │
 ├─ PHASE 2: Active Loop (while budget remains)
 │   ├─ Generate N_cand candidate architectures (respect constraints)
@@ -104,43 +111,43 @@ Cost: ~1ms per architecture (using PI-20).
 
 **Model**: Gaussian Process with two outputs:
 1. **J_topo** (directly observed from weights)
-2. **Loss** (observed only after training)
+2. **E_floor** (observed after sufficient training)
 
 **Kernel**: Matern-5/2 for continuous features + Hamming distance for categorical features.
 
 **Training data structure**:
-- `(arch_encoding, J_topo, loss_at_D)` for each evaluated architecture
+- `(arch_encoding, J_topo, E_floor)` for each evaluated architecture
 - J_topo is available for all architectures (trained or not)
-- Loss is available only after short training
+- E_floor is observed only after enough training (D ≥ 2000, 50+ epochs)
 
-**Warm-start**: The relationship $\beta \propto J_{\mathrm{topo}}$ and $\alpha \propto J_{\mathrm{topo}}^2$ provides a **theoretical prior** for the GP. Use this to initialize the mean function:
+**Warm-start**: The relationship $J_\mathrm{topo} \to E_\mathrm{floor}$ provides a **theoretical prior**:
 
-$$f_{\mathrm{prior}}(J) = \alpha_0 \cdot J^2 \cdot D^{-\beta_0 \cdot J}$$
+$$E_\mathrm{floor} \approx E_0 + k_E \cdot (J_\mathrm{topo} - J_0)$$
 
-where $\alpha_0, \beta_0$ are calibrated from Phase A data.
+where $E_0, J_0, k_E$ are calibrated from Phase A data ($k_E \approx 0.83$ correlation).
 
 ### 4.5 Acquisition Function
 
-**Objective**: Minimize expected loss $L(D_{\mathrm{target}})$ at the target dataset size.
+**Objective**: Minimize expected asymptotic loss $E_\mathrm{floor}$.
 
 **Expected Improvement (EI)**:
 
-$$\mathrm{EI}(x) = \mathbb{E}\left[\max(0, L_{\mathrm{best}} - L(x))\right]$$
+$$\mathrm{EI}(x) = \mathbb{E}\left[\max(0, E_\mathrm{best} - E(x))\right]$$
 
 **Components**:
-1. **Predicted loss** $\hat{L}(x)$ from GP, using D-scaling law with predicted $\hat{\beta}(x), \hat{\alpha}(x)$
+1. **Predicted E_floor** $\hat{E}(x)$ from GP, using $J_\mathrm{topo} \to E$ relationship
 2. **Uncertainty** $\sigma(x)$ from GP posterior
 3. **Constraint penalty** $P_{\mathrm{constraint}}(x)$: 0 if satisfied, $-\infty$ if violated
 
 **Final score**:
-$$\mathrm{score}(x) = -\hat{L}(x) + \lambda \cdot \sigma(x) - \gamma \cdot P_{\mathrm{constraint}}(x)$$
+$$\mathrm{score}(x) = -\hat{E}(x) + \lambda \cdot \sigma(x) - \gamma \cdot P_{\mathrm{constraint}}(x)$$
 
 where $\lambda$ is the exploration coefficient (e.g., $\lambda = 0.1$).
 
 **Theoretical grounding**:
-- $\hat{L}(x) = \hat{\alpha} \cdot D^{-\hat{\beta}} + E$ with $\hat{\beta} \propto J_{\mathrm{topo}}(x)$
-- $\sigma(x)$ encodes exploration value: uncertain architectures that might be good
-- Maximizing score = minimizing loss while balancing explore/exploit
+- $\hat{E}(x) = \hat{\alpha} \cdot D^{-\hat{\beta}} + E$ with $\hat{E}$ predicted from $J_\mathrm{topo}(x)$
+- $\sigma(x)$ encodes exploration value: uncertain architectures that might have lower E
+- Minimizing E = minimizing asymptotic loss = maximizing architecture quality
 
 ### 4.6 Training & Feedback
 
@@ -148,27 +155,27 @@ where $\lambda$ is the exploration coefficient (e.g., $\lambda = 0.1$).
 
 | Fidelity | Epochs | Cost | Use case |
 |----------|--------|------|----------|
-| RFF-proxy | ~50 | ~1 GPU-hour | Calibrate J_topo→loss mapping |
+| RFF-proxy | ~50 | ~1 GPU-hour | Calibrate J_topo→E mapping |
 | Low | 5–10 | ~0.5 GPU-hour | Quick filter in active loop |
 | Medium | 20–30 | ~2 GPU-hour | Refine top candidates |
 | Full | 50–200 | ~10 GPU-hour | Final validation |
 
+**E_floor estimation**: Fit $L(D) = \alpha \cdot D^{-\beta} + E$ with corrected $\alpha_\max = 500$. Use E at D=50000 as proxy for $E_\mathrm{floor}$.
+
 **Feedback to GP**:
-- After training at fidelity $f$, observe loss $L_f$
-- Convert to equivalent full-fidelity estimate using scaling law:
-  $$L_{\mathrm{full}} \approx L_f \cdot \left(\frac{D_{\mathrm{full}}}{D_f}\right)^{\hat{\beta}}$$
-- Update GP with $(x, J_{\mathrm{topo}}(x), L_{\mathrm{full-est}})$
+- After training at fidelity $f$, fit E_floor
+- Update GP with $(x, J_\mathrm{topo}(x), E_\mathrm{floor-est})$
 
 ### 4.7 Constraint Handling
 
 **Hard constraints** (filter candidates):
-- Max parameters: $N_{\mathrm{params}} \leq N_{\max}$
-- Max FLOPs: $\mathrm{FLOPs} \leq \mathrm{FLOPs}_{\max}$
-- Max latency: $\mathrm{latency} \leq \mathrm{latency}_{\max}$
+- Max parameters: $N_\mathrm{params} \leq N_\max$
+- Max FLOPs: $\mathrm{FLOPs} \leq \mathrm{FLOPs}_\max$
+- Max latency: $\mathrm{latency} \leq \mathrm{latency}_\max$
 
 **Soft constraints** (penalize in score):
 - Prefer smaller models when J_topo is similar
-- Regularization: $P_{\mathrm{size}}(x) = \log N_{\mathrm{params}}(x) / \log N_{\max}$
+- Regularization: $P_\mathrm{size}(x) = \log N_\mathrm{params}(x) / \log N_\max$
 
 **Constraint-aware candidate generation**:
 - Sample architectures conditioned on satisfying hard constraints
@@ -176,57 +183,56 @@ where $\lambda$ is the exploration coefficient (e.g., $\lambda = 0.1$).
 
 ### 4.8 Initialization Strategy
 
-**Goal**: Establish J_topo→loss mapping with minimal training.
+**Goal**: Establish J_topo→E_floor mapping with minimal training.
 
 **Recommended**:
-- $N_{\mathrm{init}} = 20$ architectures sampled via Latin Hypercube
+- $N_\mathrm{init}} = 20$ architectures sampled via Latin Hypercube
 - Compute J_topo for all 20
-- Train top-5 and bottom-5 (diverse J_topo range) for $N_{\mathrm{cal}} = 20$ epochs
-- This gives a regression J_topo → loss with $N=10$ data points
-
-**Alternative (if Phase A shows strong correlation)**:
-- Just train $N_{\mathrm{cal}} = 5$ architectures to validate the theoretical $\beta \propto J_{\mathrm{topo}}$ prior
+- Train top-5 and bottom-5 (diverse J_topo range) for $N_\mathrm{cal}} = 50$ epochs
+- Fit E_floor from scaling law to establish regression J_topo → E
 
 ### 4.9 Termination Conditions
 
 Stop when ANY of:
-1. **Budget exhausted**: $B_{\mathrm{remaining}} < \mathrm{cost}(N_{\mathrm{short\_train}})$
-2. **Plateau**: No improvement in top architecture loss over $N_{\mathrm{plateau}} = 5$ consecutive selections
-3. **Uncertainty too high**: Average GP uncertainty $\bar{\sigma} > \sigma_{\max}$ (means model is unreliable)
-4. **Theoretical bound**: Achieved $J_{\mathrm{topo}}$ within $\epsilon$ of theoretical maximum
+1. **Budget exhausted**: $B_\mathrm{remaining}} < \mathrm{cost}(N_\mathrm{short\_train}})$
+2. **Plateau**: No improvement in top architecture E_floor over $N_\mathrm{plateau}} = 5$ consecutive selections
+3. **Uncertainty too high**: Average GP uncertainty $\bar{\sigma} > \sigma_\max$ (means model is unreliable)
+4. **Theoretical bound**: Achieved $J_\mathrm{topo}}$ within $\epsilon$ of theoretical minimum (lower J → lower E)
 
 ---
 
 ## 5. Theoretical Predictions Guiding the Loop
 
-### 5.1 Loss Prediction from J_topo
+### 5.1 E_floor Prediction from J_topo
 
 Given J_topo at initialization:
 
-$$\hat{\beta} = \beta_0 \cdot \frac{J_{\mathrm{topo}}}{\bar{J}_{\mathrm{topo}}}$$
+$$\hat{E}_\mathrm{floor} = E_0 + k_E \cdot (J_\mathrm{topo} - J_0)$$
 
-$$\hat{\alpha} = \alpha_0 \cdot \left(\frac{J_{\mathrm{topo}}}{\bar{J}_{\mathrm{topo}}}\right)^2$$
+where $E_0, J_0, k_E$ are calibrated from Phase A data.
 
-where $\beta_0, \alpha_0$ are calibrated from Phase A data.
-
-Then:
-$$\hat{L}(D) = \hat{\alpha} \cdot D^{-\hat{\beta}} + E$$
+**Phase A calibration (corrected)**:
+- $k_E \approx 0.83$ (strong positive correlation)
+- Lower J_topo → lower E_floor → better final performance
+- E_floor ≈ 0.84–1.25 for ThermoNet at D=50000
 
 ### 5.2 Optimal J_topo
 
-Theoretical prediction: $J_{\mathrm{topo}} \to 1$ is optimal (stable information flow).
+**Prediction**: $J_\mathrm{topo}} \to 0$ is optimal (no information bottlenecks, perfect flow).
 
-**Practical target**: $J_{\mathrm{topo}} > 0.8$ likely indicates good architecture.
+**Practical target**: $J_\mathrm{topo}} < 0.2$ likely indicates well-designed architecture.
+
+**Note**: This is opposite to the original β ∝ J prediction. The corrected relationship $J \to E$ means lower J is better.
 
 ### 5.3 Width Profile from J_topo
 
-From $J_{\mathrm{topo}}$ constraint, we can derive the width profile:
+From $J_\mathrm{topo}}$ constraint, we can derive the width profile:
 
-$$\eta_l = \frac{D_{\mathrm{eff}}^{(l)}}{D_{\mathrm{eff}}^{(l-1)}} \approx \mathrm{const}$$
+$$\eta_l = \frac{D_\mathrm{eff}^{(l)}}{D_\mathrm{eff}^{(l-1)}} \approx \mathrm{const}$$
 
-For $J_{\mathrm{topo}} \approx 1$, we need $\eta_l \approx 1$ for all layers, meaning:
+For $J_\mathrm{topo}} \approx 1$, we need $\eta_l \approx 1$ for all layers, meaning:
 
-$$\|W_l\|_F^2 / \lambda_{\max}(W_l) \approx \mathrm{const} \cdot \lambda_{\mathrm{prev}}$$
+$$\|W_l\|_F^2 / \lambda_\max(W_l) \approx \mathrm{const} \cdot \lambda_\mathrm{prev}$$
 
 This provides a **targeted width profile** for architecture generation.
 
@@ -236,7 +242,7 @@ This provides a **targeted width profile** for architecture generation.
 
 | Failure Mode | Detection | Mitigation |
 |-------------|-----------|------------|
-| J_topo not predictive of loss | GP residuals large after N_cal | Increase N_cal; use random search baseline comparison |
+| J_topo not predictive of E | GP residuals large after N_cal | Increase N_cal; use random search baseline comparison |
 | GP poor on categorical arch space | Cross-val RMSE high | Use hierarchical GPs; separate models for depth vs width |
 | Constraints too restrictive | Few candidates pass filter | Relax hard constraints; use soft constraints instead |
 | Training feedback noisy | Loss variance high across seeds | Use more seeds per evaluation; fit scaling law instead of point loss |
@@ -247,10 +253,10 @@ This provides a **targeted width profile** for architecture generation.
 
 ## 7. Implementation Roadmap
 
-### Phase B1: Critical Gap Experiments (NOW)
-- [ ] CPU experiments: architectures at J_c ≈ 0.40 (fill critical region)
-- [ ] Compute J_topo for candidate architectures
-- [ ] Validate alpha phase transition near J_c
+### Phase B1: Critical Gap Experiments (COMPLETED)
+- [x] CPU experiments: architectures at J_c ≈ 0.40 (fill critical region) ✅
+- [x] Compute J_topo for candidate architectures ✅
+- [x] Validate alpha behavior in critical region ✅
 
 ### Phase B2: Core Infrastructure
 - [ ] Architecture encoding class (`ArchSpace`, `Architecture`)
@@ -261,7 +267,7 @@ This provides a **targeted width profile** for architecture generation.
 ### Phase B3: Surrogate Model
 - [ ] GP implementation (scikit-learn or GPy)
 - [ ] Mixed kernel (Matern + Hamming)
-- [ ] Theoretical prior: β ∝ J_topo (family-specific for ResNet)
+- [ ] Theoretical prior: J_topo → E_floor (r=0.83)
 - [ ] Acquisition function (Expected Improvement)
 
 ### Phase B4: Active Loop
@@ -281,20 +287,21 @@ This provides a **targeted width profile** for architecture generation.
 ## 8. Relationship to Phase A
 
 Phase A results (87 runs, 9 architectures on CIFAR-10) serve as:
-1. **Calibration data**: β_0 for the theoretical prior (β ∝ J_topo, validated within families)
+1. **Calibration data**: $J_\mathrm{topo} \to E_\mathrm{floor}$ regression (r=0.83, validated)
 2. **Validation baseline**: Compare AL-discovered architectures against Phase A results
 3. **Family-specific priors**: ThermoNet family (ideal) vs ResNet family (real gas)
 
-**Phase A key findings**:
-- β ∝ J_topo confirmed within families (r = 0.97)
-- α phase transition near J_c ≈ 0.35 confirmed in Phase S0
-- α unidentifiable in D ≥ 2000 (statistical, not physical)
-- E floor determined by capacity (N) + optimization difficulty (J_topo)
+**Phase A key findings (v5 corrected)**:
+- $J_\mathrm{topo} \to E_\mathrm{floor}$ confirmed: r = 0.83 ✅
+- β ∝ J was fitter artifact (r = 0.03 after correction) ❌
+- α phase transition confirmed in RFF (Phase S0) ✅
+- α regularized in ThermoNet (bounded 82–500) ✅
+- E_floor determined by capacity (N) + optimization difficulty (J_topo)
 
 **Phase B priorities**:
-1. Fill J_c ≈ 0.40 gap (critical region for alpha validation)
+1. **Primary**: AL search using J_topo → E_floor as sole metric
 2. Validate ResNet family line (ResNet-34/50)
-3. ThermoNet AL search using J_topo → β as sole metric
+3. Explore wider architecture space
 
 ---
 
@@ -306,12 +313,13 @@ Phase A results (87 runs, 9 architectures on CIFAR-10) serve as:
 4. **What acquisition function is best?** EI vs UCB vs Thompson sampling — compare empirically.
 5. **How to handle variable-depth architectures in GP kernel?** Use padding or special categorical encoding.
 6. **Can we use J_topo gradient (dJ_topo/d_architecture) for local search?** Theoretical but computationally expensive.
+7. **Why does r(J, E) = 0.83 but not higher?** Residual variance comes from architecture family differences (width vs depth families have different E intercepts).
 
 ---
 
 ## 10. References
 
-- ThermoRG Theory: `theory/THEORY.md` (v3)
-- Phase A: `experiments/phase_a/` (CIFAR-10 validation, in progress)
+- ThermoRG Theory: `theory/THEORY.md` (v5)
+- Phase A: `experiments/phase_a/` (CIFAR-10 validation, complete)
 - Active Learning: Bayesian Optimization principles (Mockus 1978, Snoek 2012)
-- NAS:enas, DARTS, Once-for-All — connection is that we replace differentiable relaxation with J_topo surrogate
+- NAS: enas, DARTS, Once-for-All — connection is that we replace differentiable relaxation with J_topo surrogate
