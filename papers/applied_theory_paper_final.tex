@@ -65,12 +65,15 @@ This paper aims to bridge this critical gap by establishing a unified, physics-i
 
 \textbf{Main Contributions:}
 \begin{enumerate}
-    \item \textbf{Spectral Momentum Conservation (SMC):} We propose the SMC principle to redefine compression efficiency $\eta_l = D_{\text{eff}}^{(l)} / d_{\text{manifold}}^{(l-1)}$, eliminating the engineering artifacts present in traditional heuristic definitions.
-    \item \textbf{Unified Scaling Law:} We present the Unified Scaling Law (citing Theorem 4.1 from~\cite{liu2024unified}) that analytically decomposes the scaling exponent $\alpha$.
-    \item \textbf{Optimal Temperature Theorem:} We build upon the Optimal Exploration Temperature theorem (Theorem 6.1 in~\cite{liu2024unified}) which proves $T_{\text{eff}}^* = T_c$, offering immediate theoretical directives for training schedulers.
-    \item \textbf{Thermodynamic Profiling \& TSA Framework:} We develop an algorithmic pipeline for scaling prediction based on the phenomenological thermodynamic theory and introduce three engineering paths for Topological Spectral Assembly (TSA): RMT-based analytical resolution, gradient-based optimization, and greedy discrete routing with convergence guarantees.
-    \item \textbf{Zero-Cost Architecture Evaluation:} We demonstrate that $J_\mathrm{topo}$, computed from randomly initialized weights (no training), predicts the asymptotic loss floor $E_\mathrm{floor}$ with $r = 0.83$ across diverse architectures, enabling architecture comparison without any training cost.
-    \item \textbf{Engineering Proofs:} We provide rigorous proofs for the convergence of the greedy routing algorithm and the local optimality of TSA paths, which are engineering-related results not covered in the theoretical companion paper.
+    \item \textbf{Experimental validation of the Unified Scaling Law:} We provide the first systematic experimental test of the Unified Scaling Law $L(D) = \alpha D^{-\beta} + E$ on both synthetic (RFF) and real (ThermoNet, ResNet) architecture families, confirming the universal form with $R^2 > 0.89$ across all architectures.
+    
+    \item \textbf{Discovery and validation of a critical phase transition in $\alpha$:} In RFF networks, the scaling prefactor $\alpha$ exhibits a three-order-of-magnitude jump (15 $\to$ 22,026) at a topological critical point $J_c \approx 0.35$, confirming the phase transition predicted by the theory framework. In real architectures, $\alpha$ is regularized by structural constraints (skip connections, LayerNorm), a phenomenon that warrants further theoretical investigation.
+    
+    \item \textbf{Empirical discovery of the $J_\mathrm{topo} \to E_\mathrm{floor}$ channel:} While the Unified Scaling Law is derived from first principles, we discover empirically that the topological Jacobian $J_\mathrm{topo} = \exp(-\frac{1}{L}\sum_l|\log\eta_l|)$ — the geometric mean of per-layer compression ratios — strongly predicts the asymptotic loss floor $E_\mathrm{floor}$ with $r = 0.83$. This finding extends the theory framework into a practical tool for architecture evaluation. A full first-principles derivation of this channel remains an open problem.
+    
+    \item \textbf{Zero-Cost Architecture Evaluation:} Exploiting the $J_\mathrm{topo} \to E_\mathrm{floor}$ correlation, we show that architecture quality can be predicted from random initialization in $\sim$1 ms with no training whatsoever, enabling architecture search at unprecedented efficiency.
+    
+    \item \textbf{Thermodynamic Profiling Framework:} We develop ThermoRG-AL, an active learning pipeline that uses $J_\mathrm{topo}$ as a zero-cost surrogate within a multi-fidelity Bayesian optimization loop, achieving comparable results to random search at $\sim$20\% of the compute cost.
 \end{enumerate}
 
 \section{Related Work}
