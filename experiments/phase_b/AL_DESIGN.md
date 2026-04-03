@@ -399,3 +399,37 @@ Compare: TN-W64 (D_eff ≈ 3000) would fail Filter B automatically on CIFAR-10, 
 
 The algorithm automatically adapts to ImageNet (larger N, larger d_manifold) without any retuning.
 
+
+---
+
+## 4.7 Phase B Experiment Results (CIFAR-10, 2026-04-03)
+
+### Pre-selection: 20 Candidates Evaluated
+
+**Dataset:** CIFAR-10 (N=50,000, estimated d_manifold=50)
+**Filters:** J_topo > 0.5 AND D_eff_total <= 591
+
+| Rank | ID | J_topo | D_eff | D_eff/cap | Params | Pass? |
+|------|-----|--------|-------|-----------|--------|-------|
+| 1 | T18 | **0.789** | 260 | 44% | 0.59M | ✓ |
+| 2 | T04 | 0.763 | 366 | 62% | 0.93M | ✓ |
+| 3 | T09 | 0.749 | 500 | 85% | 1.31M | ✓ |
+| 4 | T13 | 0.678 | 391 | 66% | 1.08M | ✓ |
+| 5 | T08 | 0.650 | 565 | 96% | 1.80M | ✓ |
+| 6 | T12 | 0.575 | 426 | 72% | 1.40M | ✓ |
+| 7 | T16 | 0.524 | 555 | 94% | 2.05M | ✓ |
+| 8 | T11 | **0.505** | 300 | 51% | 1.05M | ✓ |
+| - | T01 | 0.436 | 601 | 102% | 2.61M | ✗ (J<0.5, D_eff>cap) |
+| - | T10 | 0.580 | 3170 | 536% | 20.64M | ✗ (D_eff>>cap) |
+| - | T19 | 0.631 | 2574 | 436% | 12.72M | ✗ (D_eff>>cap) |
+
+**Result:** 8/20 candidates pass both filters. Skip-connection candidates dominate (7/9 pass vs 1/11 for no-skip).
+
+**Recommended for validation:** T18 (best J_topo), T11 (threshold candidate), T04 (no-skip diversity)
+
+### Key Observations
+
+1. **Skip connections improve J_topo**: Candidates with skip connections consistently achieve higher J_topo at the same depth/width
+2. **Depth increases D_eff**: Deeper architectures (T10, T19) fail the capacity bound even when J_topo is acceptable
+3. **Narrow width reduces D_eff**: T18 (wm=0.5) has lowest D_eff (260) and best J_topo (0.789)
+
