@@ -3,13 +3,11 @@
 ThermoRG Phase S1 v3 — Cooling Theory Validation (Compact)
 ==========================================================
 
-Design: Validate BatchNorm and Skip as "cooling mechanisms"
-- None_NoSkip: baseline (D=32,48,64,96 × 2 seeds = 8 runs)
-  -> Already completed: D=32,48 × 2 seeds (4 runs), remaining: D=64,96 × 2 seeds (4 runs)
-- BN_NoSkip: test BatchNorm cooling (D=32,48,64,96 × 2 seeds = 8 runs)
-- LN_NoSkip: control for BN (D=32,48,64,96 × 1 seed = 4 runs)
+Design: Validate BatchNorm as "cooling mechanism" (φ_BN ≈ 0.66)
+- None_NoSkip: baseline — D=32,48 (already done), D=64,96 × 2 seeds = 4 runs remaining
+- BN_NoSkip: test BatchNorm cooling — D=32,48,64,96 × 2 seeds = 8 runs
 
-Total: 16 runs × ~45min = ~12 hours (within 17h quota)
+Total: 12 runs × ~45min = ~9 hours (within 17h quota)
 """
 
 import json, math, os, sys, time, warnings
@@ -36,9 +34,8 @@ warnings.filterwarnings('ignore')
 # ──────────────────────────────────────────────────────────────────────────────
 
 CONFIGS = [
-    ('None_NoSkip',  'none',       [42, 123]),    # baseline, 2 seeds
-    ('BN_NoSkip',    'batchnorm',  [42, 123]),    # test BatchNorm cooling, 2 seeds
-    ('LN_NoSkip',    'layernorm',  [42]),         # control, 1 seed
+    ('None_NoSkip',  'none',       [42, 123]),    # baseline, skip D=32,48 (already done)
+    ('BN_NoSkip',    'batchnorm',  [42, 123]),    # test BatchNorm cooling
 ]
 
 D_VALUES = [32, 48, 64, 96]
