@@ -275,6 +275,77 @@ Phase S1 measured $\gamma$ for BN vs None. Future experiments should measure $\g
 
 **Expected**: Combined cooling should show multiplicative reduction in $\gamma$.
 
+### 5.4 Module Order: First-Principles Derivation
+
+**Question**: Does the order of normalization layers relative to convolution affect cooling?
+
+#### 5.4.1 Variance Propagation Through Layers
+
+Let $\sigma_l^2$ be the activation variance at layer $l$. Without normalization:
+
+$$\sigma_l^2 \approx \sigma_{l-1}^2 \cdot \frac{\|W_l\|_F^2}{f_{\text{in}}}$$
+
+With BatchNorm ($\gamma_l$ denotes the BN scale parameter):
+
+$$\sigma_l^2 \approx \gamma_l^2 \cdot \sigma_{l-1}^2$$
+
+#### 5.4.2 Post-Activation (Conv → BN → ReLU)
+
+For a post-activation block:
+1. Convolution operates on **uncontrolled** input variance $\sigma_{l-1}^2$
+2. Weight norm deviation: $\alpha_l = \|W_l\|_F^2 / f_{\text{in}}$
+3. BN normalizes output to $\gamma_l$
+
+The variance ratio:
+$$\frac{\sigma_l^2}{\sigma_{l-1}^2} = \alpha_l \cdot \gamma_l^2$$
+
+The heating contribution:
+$$\gamma_{\text{post}} = \frac{1}{L}\sum_l \left|\ln(\alpha_l \cdot \gamma_l^2)\right|$$
+
+**Key**: $\gamma_l$ must absorb fluctuations from **both** weight norm ($\alpha_l$) **and** inherited input variance ($\sigma_{l-1}^2$).
+
+#### 5.4.3 Pre-Activation (BN → ReLU → Conv)
+
+For a pre-activation block:
+1. BN first normalizes input to $\gamma_{l-1}^2$
+2. Convolution operates on **controlled** variance
+3. Output variance: $\sigma_l^2 = \alpha_l \cdot \gamma_{l-1}^2 / 2$
+
+The heating contribution:
+$$\gamma_{\text{pre}} = \frac{1}{L}\sum_l \left|\ln(\alpha_l \cdot \gamma_{l-1}^2 / 2)\right|$$
+
+**Key**: Weight norm deviations $\alpha_l$ appear directly in $\sigma_l^2$ but are **not** amplified by subsequent normalization in the same block.
+
+#### 5.4.4 Quantitative Comparison
+
+Under small deviation analysis ($\alpha_l = 2 + \delta_l$, $\gamma_l = 1 + \epsilon_l$):
+
+| **Order** | **γ Approximation** | **Physical Meaning** |
+|-----------|---------------------|--------------------|
+| Post-activation | $\gamma_{\text{post}} \approx \frac{1}{L}\sum\|\epsilon_l\|$ | BN must compensate for weight + input variance fluctuations |
+| Pre-activation | $\gamma_{\text{pre}} \approx \frac{1}{L}\sum\|\delta_l/4 + \epsilon_{l-1}\|$ | Weight deviation appears directly; input variance pre-filtered |
+
+Empirically: $|\epsilon_l|_{\text{post}} > |\delta_l/4 + \epsilon_{l-1}|_{\text{pre}}$
+
+Therefore: **$\gamma_{\text{pre}} < \gamma_{\text{post}}$**
+
+#### 5.4.5 Implications for Cooling Theory
+
+Since $\gamma_{\text{pre}} < \gamma_{\text{post}}$:
+
+1. **Cooling factor**: $\varphi(\gamma) = \frac{\gamma_c}{\gamma_c + \gamma}\exp(-\gamma/\gamma_c)$ is larger for pre-activation
+2. **Scaling exponent**: $\beta = \beta_0 \cdot \varphi(\gamma)$ is larger for pre-activation
+3. **Asymptotic error**: $E_{\text{floor}}$ is lower for pre-activation
+
+**This explains empirically observed superiority of pre-activation designs** (ResNet-v2, Pre-LN Transformer).
+
+#### 5.4.6 Gradient Flow Perspective (Additional)
+
+Pre-activation also improves gradient propagation:
+- Gradients: $\frac{\partial L}{\partial x} = \frac{\partial L}{\partial \text{BN}} \cdot \frac{\partial \text{BN}}{\partial x}$
+- The chain is cleaner because BN stabilizes the signal
+- This further reduces effective $\gamma$ for gradient-based learning
+
 ---
 
 ## 6. Experimental Validation Summary
@@ -473,7 +544,7 @@ return best_architecture(GP)
 | **v4** | 2026-04-02 | Alpha phase transition: critical divergence $\alpha = C/|J-J_c|^\nu$; Alpha unidentifiability in asymptotic regime; ResNet-18 as "real gas" family |
 | **v5** | 2026-04-03 | **CORRECTED**: $\beta \propto J$ was fitter artifact; J_topo controls E_floor ($r=0.83$) for ThermoNet; alpha regularized (not diverging); Phase B uses E_floor as optimization target |
 | **v6** | 2026-04-05 | **CORRECTED**: Section 5.2 cooling dynamics — BN/LN reduce $\gamma$ (not increase); $\phi(\gamma)$ decreasing in $\gamma$; Phase S1 v3 validates theory; $\gamma_c = 2.0$ fitted |
-| **v7** | 2026-04-05 | **ADDED**: Section 7 Universal ThermoRG Algorithm; **ADDED**: Section 5.3 Implicit Cooling Mechanisms (skip, wd, lr schedule, etc.) |
+| **v7** | 2026-04-05 | **ADDED**: Section 7 Universal ThermoRG Algorithm; **ADDED**: Section 5.3 Implicit Cooling Mechanisms; **ADDED**: Section 5.4 Module Order First-Principles Derivation (pre vs post-activation) |
 
 ---
 
