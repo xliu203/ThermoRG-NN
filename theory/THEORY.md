@@ -227,6 +227,54 @@ $$\varphi_\mathrm{BN} = \frac{\phi(\gamma_\mathrm{BN})}{\phi(\gamma_\mathrm{None
 
 The theory is **consistent**: BN cools (reduces $\gamma$), which increases $\phi$, which increases $\beta$.
 
+### 5.3 Implicit Cooling Mechanisms (General Cooling Theory)
+
+**Key insight**: Cooling is NOT limited to BN/LN. Any mechanism that stabilizes activation variance during training is a **cooling mechanism**.
+
+The cooling factor $\phi(\gamma)$ depends only on $\gamma$, the measured variance fluctuation. Therefore, **any architectural or hyperparameter choice that reduces $\gamma$ acts as cooling**.
+
+#### Explicit vs Implicit Cooling
+
+| **Explicit Cooling** | **Implicit Cooling** |
+|---------------------|---------------------|
+| BatchNorm, LayerNorm, GroupNorm | Skip connections |
+| Normalization layers enforce unit variance | Keep activations closer to identity |
+| Direct effect on $\gamma$ | Reduces variance drift indirectly |
+
+#### Additional Cooling Mechanisms
+
+| **Mechanism** | **How it Reduces γ** | **Expected Effect** |
+|---------------|---------------------|---------------------|
+| **Skip connections** | $\widehat{W} = S + W$ keeps gradients near identity | Reduce γ by ~10-20% |
+| **Weight decay** | Penalizes large weights, prevents explosion | Moderate γ reduction |
+| **Learning rate warmup** | Avoids large updates early | Reduces early variance drift |
+| **Cosine annealing** | Gradual reduction of step size | Stabilizes late training |
+| **Gradient clipping** | Prevents gradient explosion | Limits maximum variance |
+| **Proper initialization** | Kaiming/Xavier keep variance in bounds | Reduces initial γ growth |
+
+#### Physical Interpretation
+
+The cooling analogy is **general**:
+
+- **Temperature** ↔ Activation variance $\sigma^2$
+- **Heating** ↔ Variance drift from initialization (large $\gamma$)
+- **Cooling** ↔ Variance stabilization (small $\gamma$)
+- **Thermostat** ↔ BN/LN (explicit normalization)
+- **Insulation** ↔ Skip connections, weight decay (implicit stabilization)
+
+**All cooling mechanisms contribute to the same goal**: keep the network in a stable training regime, which increases $\beta$ (scaling exponent) and decreases $E_\mathrm{floor}$ (asymptotic error).
+
+#### Future Validation
+
+Phase S1 measured $\gamma$ for BN vs None. Future experiments should measure $\gamma$ for:
+
+1. **Skip vs No-Skip** (same width/depth/norm) — quantify skip's cooling effect
+2. **Different weight decay strengths** — dose-response curve
+3. **LR warmup vs no warmup** — early training stability
+4. **Combined cooling** (BN + Skip) — additive or super-additive?
+
+**Expected**: Combined cooling should show multiplicative reduction in $\gamma$.
+
 ---
 
 ## 6. Experimental Validation Summary
@@ -425,7 +473,7 @@ return best_architecture(GP)
 | **v4** | 2026-04-02 | Alpha phase transition: critical divergence $\alpha = C/|J-J_c|^\nu$; Alpha unidentifiability in asymptotic regime; ResNet-18 as "real gas" family |
 | **v5** | 2026-04-03 | **CORRECTED**: $\beta \propto J$ was fitter artifact; J_topo controls E_floor ($r=0.83$) for ThermoNet; alpha regularized (not diverging); Phase B uses E_floor as optimization target |
 | **v6** | 2026-04-05 | **CORRECTED**: Section 5.2 cooling dynamics — BN/LN reduce $\gamma$ (not increase); $\phi(\gamma)$ decreasing in $\gamma$; Phase S1 v3 validates theory; $\gamma_c = 2.0$ fitted |
-| **v7** | 2026-04-05 | **ADDED**: Section 7 Universal ThermoRG Algorithm — data-agnostic vs data-dependent separation, 3-phase workflow, modality handling |
+| **v7** | 2026-04-05 | **ADDED**: Section 7 Universal ThermoRG Algorithm; **ADDED**: Section 5.3 Implicit Cooling Mechanisms (skip, wd, lr schedule, etc.) |
 
 ---
 
