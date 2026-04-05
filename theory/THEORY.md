@@ -2,7 +2,7 @@
 
 > **维护规则**：每当理论出现修改，必须同步更新此文件。版本号与论文 LaTeX 一致。
 
-**Current Version**: v6
+**Current Version**: v7
 **Last Updated**: 2026-04-05
 **Paper**: `papers/unified_framework_paper_final.tex`
 
@@ -309,6 +309,111 @@ OUTPUT: Optimal architecture configuration
 
 ---
 
+## 7. Universal ThermoRG Algorithm
+
+### 7.1 Design Principles
+
+The ThermoRG framework has a **clear separation** between data-agnostic (universal) and data-dependent (requires calibration) components.
+
+| **Data-Agnostic (Universal)** | **Data-Dependent (Requires Calibration)** |
+|-------------------------------|----------------------------------------|
+| J_topo formula: `exp(−mean\|log η_l\|)` | J_topo → E_floor correlation (slope, intercept) |
+| Cooling mechanism: γ = variance fluctuation, φ(γ) = γ_c/(γ_c+γ)·exp(−γ/γ_c) | Cooling factor magnitude φ_BN, φ_LN |
+| Scaling law form: L(D) = α·D⁻β + E_floor | Scaling law parameters α, β, E_floor (baseline) |
+| HBO framework (multi-fidelity loop) | Early-loss predictive power (L1 → final loss) |
+| Candidate generation (sampling) | Manifold dimension d_manifold (data complexity) |
+
+### 7.2 Phase 0: Calibration (Per Dataset, One-Time)
+
+```
+Input: Dataset D, calibration budget B_cal
+Output: Calibrated parameters Θ = {r_JtoE, f_JtoE, α_ref, β_ref, E_ref, φ_BN, φ_LN, d_manifold}
+
+1. Sample 5-10 diverse architectures A_i (vary width, depth, skip, norm)
+2. For each A_i:
+   a. Compute J_topo(A_i) using PI-20 (zero-cost)
+   b. Train A_i for 5 epochs on 10% of D → record early loss L1_i
+3. Fit linear regression: E_floor ≈ a·J_topo + b (use L1 as proxy)
+4. Fit scaling law for reference architecture (multiple data subsets) → α_ref, β_ref, E_ref
+5. Estimate cooling factors φ_BN, φ_LN by comparing β between norm types
+6. Estimate manifold dimension d_manifold via PCA on data sample
+7. Return Θ
+```
+
+**Calibration cost:** < 1 GPU-hour (5-10 archs × 5 epochs × 10% data)
+
+### 7.3 Phase 1: HBO Architecture Search
+
+```
+Input: Search space S, calibrated Θ, total budget B
+Output: Optimal architecture A*
+
+# Initialization
+GP = MultiTaskGP(features, fidelity_levels)
+candidates = LatinHypercube(S, N=100)
+for arch in candidates:
+    arch.J = compute_J_topo(arch)
+    arch.E_prior = Θ.f_JtoE(arch.J)
+    arch.β_prior = Θ.β_from_norm(arch.norm)
+
+# Level-1 screening (5-epoch training)
+top_K = select_top_K(candidates, K=20, acquisition_score)
+for arch in top_K:
+    arch.L1 = train(arch, D_subset, 5 epochs)
+    update_GP(GP, arch, fidelity=1)
+
+# Active loop
+while budget > 0:
+    new_candidates = propose_candidates(GP, S, N=10)
+    for arch in new_candidates:
+        arch.J = compute_J_topo(arch)
+        arch.E_prior = Θ.f_JtoE(arch.J)
+        arch.β_prior = Θ.β_from_norm(arch.norm)
+    selected = top_M(acquisition_score(new_candidates), M=5)
+    for arch in selected:
+        arch.L1 = train(arch, D_subset, 5 epochs)
+        update_GP(GP, arch, fidelity=1)
+    if iteration % 5 == 0:
+        best = get_best_expected(GP)
+        best.L2 = train(best, D_subset, 50 epochs)
+        if budget permits:
+            best.scaling_params = fit_scaling_law(best)
+    budget -= cost_of_iteration
+
+return best_architecture(GP)
+```
+
+### 7.4 Phase 2: Deployment
+
+- Full training of selected architecture on entire dataset
+- Optional hyperparameter tuning
+- Final evaluation
+
+### 7.5 Handling Different Modalities
+
+| **Modality** | **Architecture Template** | **J_topo Adaptation** | **Normalization** | **Manifold Estimation** |
+|--------------|---------------------------|-----------------------|-------------------|-------------------------|
+| **Vision** (CIFAR-10, ImageNet) | ConvNet / ResNet variants | Treat conv filters as matrix; skip: Ŵ = S + W | BatchNorm (standard), LayerNorm (ViT) | PCA on flattened image patches |
+| **Language** (text) | Transformer blocks | Linear layers in attention & MLP; exclude LayerNorm (η=1) | LayerNorm (standard) | PCA on token embeddings |
+| **Video / Multimodal** | 3D ConvNet or Transformer | Extend to spatiotemporal layers; same skip rule | BatchNorm3D or LayerNorm | PCA on spatiotemporal patches |
+
+**Universal adaptations:**
+- Any new layer type: define its effective-dimension computation
+- Normalization layers: excluded from J_topo (η=1)
+- Skip connections: Ŵ = S + W
+
+### 7.6 Expected Efficiency Gains
+
+| **Model Size** | **Random Search** | **HBO** | **Speedup** |
+|----------------|------------------|---------|--------------|
+| 1M params | 1000 × 1h = 1000 GPU-h | ~10 GPU-h | ~100× |
+| 1B params | 1000 × 7 days = 7000 GPU-days | ~5 GPU-days | ~1400× |
+| 70B params | 1000 × months | ~days | ~1000× |
+
+**前提:** J_topo (or L1) correlates with final performance on the new dataset.
+
+---
+
 ## 9. Version History
 
 | Version | Date | Changes |
@@ -320,6 +425,7 @@ OUTPUT: Optimal architecture configuration
 | **v4** | 2026-04-02 | Alpha phase transition: critical divergence $\alpha = C/|J-J_c|^\nu$; Alpha unidentifiability in asymptotic regime; ResNet-18 as "real gas" family |
 | **v5** | 2026-04-03 | **CORRECTED**: $\beta \propto J$ was fitter artifact; J_topo controls E_floor ($r=0.83$) for ThermoNet; alpha regularized (not diverging); Phase B uses E_floor as optimization target |
 | **v6** | 2026-04-05 | **CORRECTED**: Section 5.2 cooling dynamics — BN/LN reduce $\gamma$ (not increase); $\phi(\gamma)$ decreasing in $\gamma$; Phase S1 v3 validates theory; $\gamma_c = 2.0$ fitted |
+| **v7** | 2026-04-05 | **ADDED**: Section 7 Universal ThermoRG Algorithm — data-agnostic vs data-dependent separation, 3-phase workflow, modality handling |
 
 ---
 
