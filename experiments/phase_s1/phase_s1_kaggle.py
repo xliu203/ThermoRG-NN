@@ -34,6 +34,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import linalg
 
+try:
+    from tqdm.auto import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+
 warnings.filterwarnings('ignore')
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -288,7 +294,13 @@ def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum,
 
     t0 = time.time()
 
-    for epoch in range(epochs):
+    # Progress bar
+    if TQDM_AVAILABLE:
+        pbar = tqdm(range(epochs), desc="Training", leave=False)
+    else:
+        pbar = range(epochs)
+
+    for epoch in pbar:
         # Train
         model.train()
         for X, y in train_loader:
@@ -331,14 +343,14 @@ def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum,
             gamma = tracker.compute_gamma(init_variances)
             gamma_history.append({'epoch': epoch + 1, 'gamma': gamma})
 
-        # Periodic logging
-        if (epoch + 1) % 50 == 0 or epoch == epochs - 1:
+        # Update progress bar
+        if TQDM_AVAILABLE:
             elapsed = (time.time() - t0) / 60
-            epochs_left = epochs - epoch - 1
-            eta = elapsed / (epoch + 1) * epochs_left if epoch > 0 else 0
-            gamma_str = f", γ={gamma_history[-1]['gamma']:.4f}" if gamma_history else ""
-            print(f"  Epoch {epoch+1}/{epochs}: loss={val_loss:.4f}, "
-                  f"best={best_val_loss:.4f}, elapsed={elapsed:.1f}min, ETA={eta:.1f}min{gamma_str}")
+            pbar.set_postfix({
+                'loss': f'{val_loss:.4f}',
+                'best': f'{best_val_loss:.4f}',
+                'elapsed': f'{elapsed:.1f}m'
+            })
 
     if tracker:
         tracker.close()
