@@ -222,6 +222,7 @@ class VarianceTracker:
 
 def measure_init_variance(model, batch_size=32):
     """Measure initial activation variances on a dummy batch."""
+    model = model.to(DEVICE)
     model.eval()
     tracker = VarianceTracker(model)
 
