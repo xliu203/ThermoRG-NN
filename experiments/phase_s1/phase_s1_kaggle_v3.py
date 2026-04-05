@@ -357,13 +357,8 @@ def estimate_params(base_ch):
 
 def main():
     print("=" * 70)
-    print("Phase S1 v3: Cooling Theory Validation (Compact)")
-    print("=" * 70)
-    print(f"Device: {DEVICE}")
-    print(f"Configs: {CONFIGS}")
-    print(f"D values: {D_VALUES}")
-    print(f"Epochs: {EPOCHS}")
-    print(f"Output: {OUT_DIR}")
+    print("Phase S1 v3: Cooling Theory Validation")
+    print(f"Device: {DEVICE} | Epochs: {EPOCHS} | D: {D_VALUES}")
 
     # Load metadata for checkpoint/resume
     meta_file = OUT_DIR / 'metadata.json'
@@ -376,7 +371,6 @@ def main():
     completed = set(metadata['completed_runs'])
     total_runs = sum(len(cfg[2]) * len(D_VALUES) for cfg in CONFIGS)
     remaining = total_runs - len([r for r in completed if is_valid_run(r)])
-    print(f"Total runs: {total_runs}, completed: {len(completed)}, remaining: {remaining}")
 
     train_loader, val_loader = get_dataloaders()
     print("Data loaded.")
@@ -390,18 +384,18 @@ def main():
 
     t_start = time.time()
 
-    for config_name, norm_type, seeds in CONFIGS:
-        print(f"\n{'='*60}")
-        print(f"CONFIG: [{config_name}] norm={norm_type}")
-        print(f"{'='*60}")
+    # Print clean header
+    print(f"Training {total_runs} runs ({len(completed)} done, {remaining} remaining)")
+    print(f"Epochs: {EPOCHS} | D: {D_VALUES} | Checkpoint dir: {CKPT_DIR}")
+    print("-" * 60)
 
+    for config_name, norm_type, seeds in CONFIGS:
         cfg_start = time.time()
 
-        # J_topo at init
+        # J_topo at init (silent)
         model_init = ValidationNet(base_ch=64, norm_type=norm_type, use_skip=False).to(DEVICE)
         weights = model_init.get_conv_weights()
         J_topo = compute_J_topo(weights)
-        print(f"J_topo(init) = {J_topo:.4f}")
         del model_init
         torch.cuda.empty_cache()
 
@@ -424,9 +418,8 @@ def main():
                 run_name = f"{config_name}_ch{base_ch}_s{seed}"
                 ckpt_path = CKPT_DIR / f"{run_name}.pt"
 
-                # Check if completed
+                # Check if completed — silent load
                 if run_name in completed:
-                    print(f"\n  --- {run_name} [SKIP - already completed] ---")
                     if ckpt_path.exists():
                         ckpt = torch.load(ckpt_path, map_location=DEVICE)
                         result = ckpt['result']
@@ -435,7 +428,8 @@ def main():
                             gammas.append(np.mean([g['gamma'] for g in result['gamma_history']]))
                     continue
 
-                print(f"\n  --- {run_name} (~{n_params:.1f}M params) ---")
+                # Actually train
+                print(f"  [{config_name}] D={base_ch} seed={seed} ({n_params:.1f}M) ... ", end='', flush=True)
 
                 torch.manual_seed(seed)
                 torch.cuda.manual_seed(seed)
@@ -450,7 +444,6 @@ def main():
                     ckpt = torch.load(ckpt_path, map_location=DEVICE)
                     model.load_state_dict(ckpt['model_state'])
                     start_epoch = ckpt.get('epoch', 0) + 1
-                    print(f"    ↩  Resuming from epoch {start_epoch}")
 
                 t0 = time.time()
 
@@ -470,14 +463,11 @@ def main():
                     'result': result
                 }, ckpt_path)
 
-                print(f"    ✅ {run_name}: loss={result['best_val_loss']:.4f}, "
-                      f"acc={result['best_val_acc']:.4f}, time={elapsed:.1f}min")
+                avg_g = np.mean([g['gamma'] for g in result['gamma_history']]) if result.get('gamma_history') else 0
+                print(f"loss={result['best_val_loss']:.4f} acc={result['best_val_acc']:.4f} "
+                      f"γ={avg_g:.3f} [{elapsed:.0f}m]")
 
-                if result.get('gamma_history'):
-                    avg_g = np.mean([g['gamma'] for g in result['gamma_history']])
-                    print(f"       γ={avg_g:.4f}")
-                    gammas.append(avg_g)
-
+                gammas.append(avg_g)
                 losses.append(result['best_val_loss'])
                 d_result['seeds'][str(seed)] = result
 
@@ -493,10 +483,6 @@ def main():
             if losses:
                 d_result['avg_val_loss'] = float(np.mean(losses))
                 d_result['avg_gamma'] = float(np.mean(gammas)) if gammas else None
-                print(f"  [D={base_ch}] avg_loss={d_result['avg_val_loss']:.4f}", end='')
-                if d_result['avg_gamma'] is not None:
-                    print(f", avg_γ={d_result['avg_gamma']:.4f}", end='')
-                print()
 
             cfg_result['D_results'][str(base_ch)] = d_result
 
@@ -506,8 +492,8 @@ def main():
         if losses_by_d:
             fit = fit_scaling_law(losses_by_d, list(losses_by_d.keys()))
             cfg_result['scaling_fit'] = fit
-            print(f"  Scaling: α={fit['alpha']:.2f}, β={fit['beta']:.4f}, "
-                  f"E={fit['E']:.4f}, R²={fit['R2']:.4f}")
+            print(f"  [{config_name}] β={fit['beta']:.4f} R²={fit['R2']:.4f} "
+                  f"(wall: {(time.time()-cfg_start)/60:.0f}min)")
 
         cfg_result['wall_time_min'] = (time.time() - cfg_start) / 60
         all_results['configs'].append(cfg_result)
