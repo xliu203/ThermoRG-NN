@@ -17,15 +17,16 @@ Key test:
     - Combined: φ_total = φ_BN × φ_skip
 
 Experiment:
-    - 6 configs: norm (none/LN/BN) × skip (no/yes)
+    - 4 configs: norm (none/LN/BN) × skip (no/yes)
     - 4 D values via width scaling: base_ch ∈ {32, 48, 64, 96}
     - CIFAR-10, 200 epochs, 2 seeds
-    - Track activation variances for γ_norm calculation
+    - **Track activation variances for γ calculation**
 """
 
 import json, math, os, sys, time, warnings
 from pathlib import Path
 from datetime import datetime
+from collections import defaultdict
 
 import numpy as np
 import torch
@@ -39,18 +40,14 @@ warnings.filterwarnings('ignore')
 # CONFIG
 # ──────────────────────────────────────────────────────────────────────────────
 
-# 6 configurations: norm_type × use_skip
 CONFIGS = [
     ('None_NoSkip',  'none',       False),
     ('LN_NoSkip',    'layernorm',  False),
     ('BN_NoSkip',    'batchnorm',  False),
-    ('None_Skip',   'none',       True),
-    ('LN_Skip',      'layernorm',  True),
-    ('BN_Skip',      'batchnorm',  True),
+    ('None_Skip',    'none',       True),
 ]
 
-# D values via base channel width
-D_VALUES = [32, 48, 64, 96]  # ~{0.2M, 0.5M, 0.9M, 2M} params
+D_VALUES = [32, 48, 64, 96]
 SEEDS = [42, 123]
 EPOCHS = 200
 BATCH_SIZE = 128
@@ -61,6 +58,8 @@ MOMENTUM = 0.9
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 OUT_DIR = Path('./phase_s1_results')
 OUT_DIR.mkdir(exist_ok=True)
+
+GAMMA_TRACK_EVERY = 50  # track gamma at these epochs
 
 # ──────────────────────────────────────────────────────────────────────────────
 # NETWORK
@@ -164,7 +163,80 @@ def compute_J_topo(weights, d_input=3.0):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TRAINING
+# ACTIVATION VARIANCE TRACKING (γ calculation)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class VarianceTracker:
+    """Track activation variances through the network for γ calculation."""
+
+    def __init__(self, model):
+        self.model = model
+        self.activations = {}
+        self.handles = []
+        self._register_hooks()
+
+    def _register_hooks(self):
+        """Register forward hooks on all conv and linear layers."""
+        def get_activation(name):
+            def hook(module, input, output):
+                # Capture post-activation variance
+                self.activations[name] = output.detach()
+            return hook
+
+        for name, module in self.model.named_modules():
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                handle = module.register_forward_hook(get_activation(name))
+                self.handles.append(handle)
+
+    def get_variances(self):
+        """Return dict of layer_name -> variance."""
+        variances = {}
+        for name, acts in self.activations.items():
+            # Global variance across batch, height, width
+            variances[name] = acts.var().item()
+        return variances
+
+    def compute_gamma(self, init_variances):
+        """
+        Compute γ = Σ_l |log(σ_l / σ_l^init)| / L
+        γ measures how much the activation variance has shifted from init.
+        """
+        final_variances = self.get_variances()
+        gamma_total = 0.0
+        count = 0
+
+        for name in init_variances:
+            if name in final_variances:
+                sigma_init = math.sqrt(init_variances[name])
+                sigma_final = math.sqrt(final_variances[name])
+                if sigma_init > 1e-8 and sigma_final > 1e-8:
+                    gamma_total += abs(math.log(sigma_final / sigma_init))
+                    count += 1
+
+        return gamma_total / max(count, 1)
+
+    def close(self):
+        for handle in self.handles:
+            handle.remove()
+
+
+def measure_init_variance(model, batch_size=32):
+    """Measure initial activation variances on a dummy batch."""
+    model.eval()
+    tracker = VarianceTracker(model)
+
+    # Dummy forward pass
+    dummy_input = torch.randn(batch_size, 3, 32, 32).to(DEVICE)
+    with torch.no_grad():
+        model(dummy_input)
+
+    init_variances = tracker.get_variances()
+    tracker.close()
+    return init_variances
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DATALOADER
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_dataloaders():
@@ -190,17 +262,30 @@ def get_dataloaders():
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,
                              num_workers=2, pin_memory=True)
     val_loader   = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False,
-                             num_workers=2, pin_memory=True)
+                             num_workers=2)
     return train_loader, val_loader
 
 
-def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum):
+def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum,
+                init_variances=None, track_gamma=False):
+    """
+    Train model. If track_gamma=True and init_variances provided,
+    measure γ at epochs defined by GAMMA_TRACK_EVERY.
+    """
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=wd)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     criterion = nn.CrossEntropyLoss()
 
     best_val_loss = float('inf')
     best_epoch = 0
+    gamma_history = []
+
+    # Setup gamma tracking
+    tracker = None
+    if track_gamma and init_variances is not None:
+        tracker = VarianceTracker(model)
+
+    t0 = time.time()
 
     for epoch in range(epochs):
         # Train
@@ -211,7 +296,6 @@ def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum):
             loss = criterion(model(X), y)
             loss.backward()
             optimizer.step()
-
         scheduler.step()
 
         # Evaluate
@@ -235,12 +319,36 @@ def train_model(model, train_loader, val_loader, epochs, lr, wd, momentum):
             best_val_acc = val_acc
             best_epoch = epoch + 1
 
+        # Track gamma at specified epochs
+        if tracker and (epoch + 1) in GAMMA_TRACK_EVERY or \
+           (tracker and epoch == epochs - 1):
+            model.eval()
+            # Forward pass to capture activations
+            dummy_x = torch.randn(64, 3, 32, 32).to(DEVICE)
+            with torch.no_grad():
+                model(dummy_x)
+            gamma = tracker.compute_gamma(init_variances)
+            gamma_history.append({'epoch': epoch + 1, 'gamma': gamma})
+
+        # Periodic logging
+        if (epoch + 1) % 50 == 0 or epoch == epochs - 1:
+            elapsed = (time.time() - t0) / 60
+            epochs_left = epochs - epoch - 1
+            eta = elapsed / (epoch + 1) * epochs_left if epoch > 0 else 0
+            gamma_str = f", γ={gamma_history[-1]['gamma']:.4f}" if gamma_history else ""
+            print(f"  Epoch {epoch+1}/{epochs}: loss={val_loss:.4f}, "
+                  f"best={best_val_loss:.4f}, elapsed={elapsed:.1f}min, ETA={eta:.1f}min{gamma_str}")
+
+    if tracker:
+        tracker.close()
+
     return {
         'best_val_loss': best_val_loss,
         'best_val_acc': best_val_acc,
         'best_epoch': best_epoch,
         'final_val_loss': val_loss,
         'final_val_acc': val_acc,
+        'gamma_history': gamma_history,
     }
 
 
@@ -290,6 +398,7 @@ def main():
     print(f"D values: {D_VALUES}")
     print(f"Seeds: {SEEDS}")
     print(f"Epochs: {EPOCHS}")
+    print(f"Track gamma: True")
 
     train_loader, val_loader = get_dataloaders()
     print("Data loaded.")
@@ -299,7 +408,8 @@ def main():
         'config': {
             'epochs': EPOCHS, 'batch_size': BATCH_SIZE,
             'lr': LR, 'wd': WD, 'momentum': MOMENTUM,
-            'd_values': D_VALUES, 'seeds': SEEDS
+            'd_values': D_VALUES, 'seeds': SEEDS,
+            'gamma_tracked': True
         },
         'configs': []
     }
@@ -331,35 +441,50 @@ def main():
 
         # Train for each D value
         for base_ch in D_VALUES:
-            print(f"\n  base_ch={base_ch} ({'约' + str(estimate_params(base_ch)) + 'M params'})...", end=' ', flush=True)
+            n_params = estimate_params(base_ch)
+            print(f"\n  base_ch={base_ch} (~{n_params:.1f}M params)...", end=' ', flush=True)
 
-            d_result = {'base_ch': base_ch, 'seeds': {}}
+            d_result = {'base_ch': base_ch, 'n_params_M': n_params, 'seeds': {}}
             losses = []
+            gamma_all = []
 
             for seed in SEEDS:
                 torch.manual_seed(seed)
                 torch.cuda.manual_seed(seed)
 
                 model = ValidationNet(base_ch=base_ch, norm_type=norm_type,
-                                   use_skip=use_skip).to(DEVICE)
+                                     use_skip=use_skip).to(DEVICE)
+
+                # Measure initial variance for gamma tracking
+                init_vars = measure_init_variance(model, batch_size=64)
 
                 result = train_model(model, train_loader, val_loader,
-                                   epochs=EPOCHS, lr=LR, wd=WD, momentum=MOMENTUM)
+                                   epochs=EPOCHS, lr=LR, wd=WD, momentum=MOMENTUM,
+                                   init_variances=init_vars, track_gamma=True)
 
                 d_result['seeds'][seed] = result
                 losses.append(result['best_val_loss'])
+
+                # Average gamma across tracking epochs
+                if result['gamma_history']:
+                    avg_gamma = np.mean([g['gamma'] for g in result['gamma_history']])
+                    gamma_all.append(avg_gamma)
+
                 print('.', end='', flush=True)
 
                 del model
                 torch.cuda.empty_cache()
 
             avg_loss = float(np.mean(losses))
+            avg_gamma = float(np.mean(gamma_all)) if gamma_all else None
             d_result['avg_val_loss'] = avg_loss
-            print(f" avg_loss={avg_loss:.4f}")
+            d_result['avg_gamma'] = avg_gamma
+            print(f" avg_loss={avg_loss:.4f}" + (f", γ={avg_gamma:.4f}" if avg_gamma else ""))
+
             cfg_result['D_results'][str(base_ch)] = d_result
 
         # Fit scaling law
-        losses_by_d = {str(ch): cfg_result['D_results'][str(ch)]['avg_val_loss']
+        losses_by_d = {ch: cfg_result['D_results'][str(ch)]['avg_val_loss']
                        for ch in D_VALUES}
         fit = fit_scaling_law(losses_by_d, D_VALUES)
         cfg_result['scaling_fit'] = fit
@@ -391,15 +516,19 @@ def main():
     baseline = next(c for c in all_results['configs'] if c['name'] == 'None_NoSkip')
     base_beta = baseline['scaling_fit']['beta'] or 0.4
 
-    print(f"\n{'Config':<15} {'J_topo':<8} {'Beta':<10} {'φ(beta)':<10} {'E':<10}")
+    print(f"\n{'Config':<15} {'J_topo':<8} {'Beta':<10} {'φ(beta)':<10} {'γ':<10} {'E':<10}")
     print("-" * 70)
 
     for cfg in all_results['configs']:
         fit = cfg['scaling_fit']
         beta = fit['beta'] or 0
         phi = beta / base_beta if base_beta > 0 else 0
+        # Get average gamma across all D values
+        gammas = [cfg['D_results'][str(ch)]['avg_gamma']
+                  for ch in D_VALUES if cfg['D_results'][str(ch)]['avg_gamma'] is not None]
+        avg_gamma = sum(gammas)/len(gammas) if gammas else 0
         print(f"{cfg['name']:<15} {cfg['J_topo_init']:<8.4f} "
-              f"{beta:<10.4f} {phi:<10.3f} {fit['E']:<10.4f}")
+              f"{beta:<10.4f} {phi:<10.3f} {avg_gamma:<10.4f} {fit['E']:<10.4f}")
 
     # Analysis
     print("\n" + "=" * 70)
@@ -412,13 +541,12 @@ def main():
     bn = get_cfg('BN_NoSkip')
     ln = get_cfg('LN_NoSkip')
     none = get_cfg('None_NoSkip')
-    skip_ln = get_cfg('LN_Skip')
-    noskip_ln = get_cfg('LN_NoSkip')
+    skip = get_cfg('None_Skip')
 
-    # Normalization effect
     beta_none = none['scaling_fit']['beta'] or 0.4
     beta_ln = ln['scaling_fit']['beta'] or 0.4
     beta_bn = bn['scaling_fit']['beta'] or 0.4
+    beta_skip = skip['scaling_fit']['beta'] or 0.4
 
     print(f"\n1. Normalization Cooling:")
     print(f"   None vs LN: φ = {beta_ln/beta_none:.3f}")
@@ -426,28 +554,33 @@ def main():
     print(f"   LN vs BN:   φ = {beta_bn/beta_ln:.3f}")
     print(f"   Prediction: φ_BN ≈ 0.66")
 
-    # Skip effect
-    beta_skip = skip_ln['scaling_fit']['beta'] or 0.4
-    beta_noskip = noskip_ln['scaling_fit']['beta'] or 0.4
-    print(f"\n2. Skip Cooling (LN baseline):")
-    print(f"   Skip/NoSkip: φ = {beta_skip/beta_noskip:.3f}")
+    print(f"\n2. Skip Cooling:")
+    print(f"   Skip/NoSkip: φ = {beta_skip/beta_none:.3f}")
     print(f"   Prediction: φ_skip ≈ 0.93-0.98")
 
-    # Combined
-    bn_skip = get_cfg('BN_Skip')
-    beta_bnskip = bn_skip['scaling_fit']['beta'] or 0.4
-    phi_combined = beta_bnskip / beta_none
-    phi_add = (beta_bn/beta_none) * (beta_skip/beta_noskip)
-    print(f"\n3. Combined (BN+Skip):")
-    print(f"   φ_combined = {phi_combined:.3f}")
-    print(f"   φ_additivity = φ_BN × φ_skip = {phi_add:.3f}")
+    print(f"\n3. γ (activation variance shift):")
+    def get_gamma(cfg_name):
+        cfg = get_cfg(cfg_name)
+        gammas = [cfg['D_results'][str(ch)]['avg_gamma']
+                  for ch in D_VALUES if cfg['D_results'][str(ch)]['avg_gamma'] is not None]
+        return sum(gammas)/len(gammas) if gammas else 0
+
+    gamma_none = get_gamma('None_NoSkip')
+    gamma_ln = get_gamma('LN_NoSkip')
+    gamma_bn = get_gamma('BN_NoSkip')
+    gamma_skip = get_gamma('None_Skip')
+
+    print(f"   None:    γ = {gamma_none:.4f}")
+    print(f"   LN:      γ = {gamma_ln:.4f}")
+    print(f"   BN:      γ = {gamma_bn:.4f}")
+    print(f"   Skip:    γ = {gamma_skip:.4f}")
+    print(f"   Theory: γ_c ≈ 0.22 (critical cooling point)")
 
     return all_results
 
 
 def estimate_params(base_ch):
     """Rough param estimate in millions."""
-    # [3, ch, 2ch, 2ch] conv layers + fc
     conv_params = 3*base_ch*9 + base_ch*base_ch*2*9 + base_ch*base_ch*2*9
     fc_params = 2*base_ch * 10
     return (conv_params + fc_params) / 1e6
