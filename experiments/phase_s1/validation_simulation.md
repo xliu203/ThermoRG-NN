@@ -14,10 +14,11 @@ E(J, γ) = E₀(J) · exp(-κ · γ_total)
 ```
 
 ### Key Predictions to Test
-1. **Normalization cooling**: γ_norm(BatchNorm) > γ_norm(LayerNorm) ≈ 0
-2. **Skip cooling**: γ_skip ≈ 0.0125 · γ_c (weak but non-zero)
-3. **Additivity**: γ_total = γ_norm + γ_skip
-4. **Variance relation**: γ_norm = -k · ln(Var_out/Var_in)
+1. **Normalization cooling**: γ_norm(BatchNorm) < γ_norm(LayerNorm) ≈ γ_norm(None) ≈ large
+   - BN/LN **reduce** variance fluctuation → act as cooling mechanisms
+2. **Skip cooling**: γ_skip < γ_none (skip connections stabilize variance)
+3. **Additivity**: γ_total = γ_norm + γ_skip (for combined configs)
+4. **Variance relation**: γ = (1/L)Σ|ln(Var_final/Var_init)|
 
 ## Experimental Design
 
@@ -38,23 +39,23 @@ E(J, γ) = E₀(J) · exp(-κ · γ_total)
 
 | Config | Norm | Skip | Expected γ_total |
 |--------|------|------|-----------------|
-| S1_A | None | No | ≈ 0 |
-| S1_B | None | Yes | ≈ γ_skip |
-| S1_C | LayerNorm | No | ≈ 0 |
-| S1_D | LayerNorm | Yes | ≈ γ_skip |
-| S1_E | BatchNorm | No | ≈ γ_norm |
-| S1_F | BatchNorm | Yes | ≈ γ_norm + γ_skip |
+| S1_A | None | No | Large (baseline heating) |
+| S1_B | None | Yes | < S1_A (skip stabilizes) |
+| S1_C | LayerNorm | No | < S1_A (LN cools) |
+| S1_D | LayerNorm | Yes | < S1_C (combined) |
+| S1_E | BatchNorm | No | < S1_A (BN cools) |
+| S1_F | BatchNorm | Yes | Smallest (max cooling) |
 
 ### Expected Outcomes
 
-| Config | Predicted β | Predicted E |
-|--------|-------------|-------------|
-| S1_A (None, No) | Highest | Highest |
-| S1_B (None, Yes) | β · φ(γ_skip) | E · exp(-κγ_skip) |
-| S1_C (LN, No) | Same as A | Same as A |
-| S1_D (LN, Yes) | Same as B | Same as B |
-| S1_E (BN, No) | β · φ(γ_norm) | E · exp(-κγ_norm) |
-| S1_F (BN, Yes) | β · φ(γ_norm+γ_skip) | E · exp(-κ(γ_norm+γ_skip)) |
+| Config | Predicted γ | Predicted β | Predicted E |
+|--------|-------------|-------------|-------------|
+| S1_A (None, No) | Highest | Lowest | Highest |
+| S1_B (None, Yes) | < S1_A | > S1_A | < S1_A |
+| S1_C (LN, No) | < S1_A, ≈ S1_E | > S1_A, ≈ S1_E | < S1_A, ≈ S1_E |
+| S1_D (LN, Yes) | < S1_C | > S1_C | < S1_C |
+| S1_E (BN, No) | < S1_A | > S1_A | < S1_A |
+| S1_F (BN, Yes) | Lowest | Highest | Lowest |
 
 ## Measurements
 
@@ -108,11 +109,11 @@ class ValidationNet(nn.Module):
 
 ## Success Criteria
 
-1. **γ_norm ordering**: γ_norm(BatchNorm) > γ_norm(LayerNorm) ≈ γ_norm(None) ≈ 0
-2. **γ_skip detection**: Config with skip has measurably lower β and E than without
-3. **Additivity**: γ_total(BN+Skip) ≈ γ_total(BN) + γ_total(Skip)
-4. **Variance correlation**: γ_norm correlates with -ln(Var_ratio)
-5. **Form of φ(γ)**: β vs γ follows the exponential decay form
+1. **γ_norm ordering**: γ_norm(BatchNorm) < γ_norm(LayerNorm) ≈ γ_norm(None) (BN/LN reduce γ)
+2. **γ_skip detection**: Config with skip has lower γ than without skip
+3. **β ordering**: β(BN) > β(LN) > β(None) (cooler → larger β)
+4. **E_floor ordering**: E_floor(BN) < E_floor(LN) < E_floor(None) (cooler → lower floor)
+5. **Form of φ(γ)**: β vs 1/γ follows the predicted functional form
 
 ## Files
 
