@@ -55,6 +55,8 @@ from .cooling import (
     cooling_factor_power_law,
     cooling_factor_cosine,
     get_cooling_factor,
+    phi_cooling,
+    phi_ratio_BN,
     phi_from_delta,
     phi,
 )
@@ -93,6 +95,8 @@ __all__ = [
     'cooling_factor_power_law',
     'cooling_factor_cosine',
     'get_cooling_factor',
+    'phi_cooling',
+    'phi_ratio_BN',
     'phi_from_delta',
     'phi',
     # utils

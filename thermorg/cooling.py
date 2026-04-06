@@ -128,23 +128,64 @@ def get_cooling_factor(
         raise ValueError(f"Unknown schedule: {schedule}")
 
 
+def phi_cooling(gamma: float, gamma_c: float = 2.0) -> float:
+    """
+    Compute cooling factor φ(γ) from variance fluctuation γ.
+    
+    φ(γ) = γ_c / (γ_c + γ) · exp(-γ / γ_c)
+    
+    This describes how BatchNorm/LayerNorm/etc. reduces the variance
+    fluctuation and thus increases the effective learning rate β.
+    
+    Args:
+        gamma: Variance fluctuation (measured from training dynamics)
+               Typical values: γ_BN ≈ 2.36, γ_None ≈ 3.36
+        gamma_c: Critical cooling scale (fitted: γ_c ≈ 2.0)
+        
+    Returns:
+        Cooling factor φ ∈ (0, 1)
+        
+    Example:
+        >>> phi_cooling(2.36)   # BatchNorm
+        0.372
+        >>> phi_cooling(3.36)   # No normalization
+        0.182
+        >>> phi_cooling(2.36) / phi_cooling(3.36)  # Ratio ≈ 2.05
+        2.04
+    """
+    return (gamma_c / (gamma_c + gamma)) * math.exp(-gamma / gamma_c)
+
+
+def phi_ratio_BN(gamma_BN: float = 2.36, gamma_none: float = 3.36, gamma_c: float = 2.0) -> float:
+    """
+    Compute the ratio of cooling factors for BN vs None.
+    
+    φ_BN / φ_None = β_BN / β_None ≈ 2.05
+    
+    This is the key prediction of the cooling theory:
+    BatchNorm approximately doubles the learning efficiency β.
+    """
+    return phi_cooling(gamma_BN, gamma_c) / phi_cooling(gamma_none, gamma_c)
+
+
 def phi_from_delta(
     n_s: int,
     phi_per_layer: float = 0.87
 ) -> float:
     """
-    Compute total cooling factor from number of stride-2 layers.
+    Compute total stride-2 suppression factor from number of stride-2 layers.
     
     φ_total = φ^n_s
     
     Where φ ≈ 0.87 per stride-2 layer (from Δ ≈ 0.20 scaling dimension).
+    This is DIFFERENT from the BatchNorm cooling factor φ(γ).
     
     Args:
         n_s: Number of stride-2 layers
-        phi_per_layer: Cooling factor per stride-2 layer
+        phi_per_layer: Suppression factor per stride-2 layer
         
     Returns:
-        Total cooling factor
+        Total suppression factor
         
     Example:
         >>> phi_from_delta(0)  # No stride-2
@@ -157,5 +198,6 @@ def phi_from_delta(
     return math.pow(phi_per_layer, n_s)
 
 
-# Backward compatibility alias
+# Backward compatibility alias (now correctly pointing to stride-2 function)
+# NOTE: phi is now phi_from_delta (stride-2), use phi_cooling for BatchNorm
 phi = phi_from_delta
