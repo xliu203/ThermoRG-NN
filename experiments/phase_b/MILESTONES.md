@@ -45,6 +45,19 @@ CIFAR-10: 50,000 images
 - If both runs pass, formula is robust
 - If one fails, investigate why
 
+**Epochs Decision**:
+- **5 epochs** for ranking (sufficient per DeepSeek analysis)
+- 5 epochs gives stable γ (per-batch) and usable β (noisy but preserves relative order)
+- **If Spearman r < 0.5**: increase to 10-20 epochs and re-validate
+
+**What we measure vs what we need**:
+| Parameter | 5 epochs enough? | Use case |
+|----------|----------------|----------|
+| γ (variance) | ✅ Yes | Ranking |
+| β (learning speed) | ⚠️ Noisy but OK | Ranking only |
+| L1 loss | ✅ Yes | Ranking |
+| E_floor absolute | ❌ No | Needs 20-50 epochs |
+
 ### Why 5%?
 
 - Sufficient to estimate β, γ from 5 epochs
