@@ -278,7 +278,8 @@ def get_layer_weights_for_J_topo(module: nn.Module, name: str) -> Optional[torch
 
 
 def compute_J_topo(model: nn.Module,
-                   skip_exclude_patterns: Optional[List[str]] = None) -> Tuple[float, List[float]]:
+                   skip_exclude_patterns: Optional[List[str]] = None,
+                   use_stride_correction: bool = True) -> Tuple[float, List[float]]:
     """
     Compute J_topo = exp(-mean|log η_l|) from initialized weights.
     
@@ -286,10 +287,12 @@ def compute_J_topo(model: nn.Module,
       - Conv2d and Linear layers
       - LayerNorm excluded (η = 1)
       - Skip connections: combined weight W_eff = W_main + W_skip (if detectable)
+      - Stride-2 downsampling: spatial-channel compression factor ζ = C_out/(C_in·s²)
     
     Args:
         model: Neural network with initialized weights
-        skip_exclude_patterns: Regex patterns for layers to exclude (e.g. ['layernorm', 'norm'])
+        skip_exclude_patterns: Regex patterns for layers to exclude
+        use_stride_correction: If True, apply stride correction for Conv2d
     
     Returns:
         J_topo: Geometric mean of per-layer compression ratios
@@ -300,6 +303,7 @@ def compute_J_topo(model: nn.Module,
     
     eta_list = []
     prev_D_eff = None
+    prev_c_out = None
     
     named_modules = list(model.named_modules())
     
@@ -307,6 +311,8 @@ def compute_J_topo(model: nn.Module,
         # Check if should be excluded
         if any(re.search(p, name.lower()) for p in skip_exclude_patterns):
             eta_list.append(1.0)
+            prev_D_eff = None  # Reset after excluded layer
+            prev_c_out = None
             continue
         
         # Get weight
@@ -314,14 +320,32 @@ def compute_J_topo(model: nn.Module,
         if W is None:
             continue
         
+        # Determine stride and channels
+        s = 1
+        c_in = W.shape[1]
+        c_out = W.shape[0]
+        
+        if isinstance(module, nn.Conv2d):
+            s = module.stride[0] if hasattr(module, 'stride') else 1
+            c_in = module.in_channels
+            c_out = module.out_channels
+        
         # Compute D_eff
         D_eff = compute_D_eff_power_iteration(W, n_iter=20)
         
-        if prev_D_eff is not None:
+        if prev_D_eff is not None and prev_c_out is not None:
+            # Standard expansion ratio
             eta = D_eff / max(prev_D_eff, 1.0)
+            
+            # Stride correction: spatial-channel compression factor
+            if use_stride_correction and s > 1:
+                zeta = (c_out / prev_c_out) / (s ** 2)
+                eta = eta * zeta
+            
             eta_list.append(float(eta))
         
         prev_D_eff = D_eff
+        prev_c_out = c_out
     
     if not eta_list:
         return 1.0, [1.0]

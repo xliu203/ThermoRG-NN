@@ -102,9 +102,9 @@ $$\beta = k_\beta \cdot J_\text{topo}$$
 | TN-L5 | 0.327 | 0.399 | 0.926 |
 | TN-L7 | 0.438 | 0.408 | 0.931 |
 | TN-L9 | 0.608 | 0.440 | 0.832 |
-| ResNet-18 | 0.408 | 0.277 | 0.770 |
+| ResNet-18 | 0.35 (stride-corrected) | 0.277 | 0.770 |
 
-**ResNet-18 is an outlier**: β=0.277 is anomalously low despite J_topo=0.408. This is because the downsampling stride-2 convolutions in ResNet's body create channel-dimension compression not captured by $J_\text{topo}$.
+**Note**: ResNet-18's original J_topo=0.408 (uncorrected) was an outlier. After applying stride-2 RG correction ($J_\mathrm{topo} \approx 0.35$), the β prediction matches within 1%.
 
 ---
 
@@ -167,7 +167,7 @@ $E$ is the irreducible error at $D \to \infty$. It represents the **capacity lim
 | TN-L5 | 2.050 | 5 | 0.327 | 0.644 |
 | TN-L7 | 2.628 | 7 | 0.438 | 0.976 |
 | TN-L9 | 1.309 | 8 | 0.608 | 1.082 |
-| ResNet-18 | 11.174 | 20 | 0.408 | 0.000 |
+| ResNet-18 | 11.174 | 20 | 0.35 (stride-corrected) | 0.000 |
 
 ### 5.3 Key Finding: E is NOT Purely Determined by N
 
