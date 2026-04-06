@@ -5,130 +5,123 @@
 
 ---
 
-## Milestone 1: Session 2 Calibration ✅ Design
-**Estimated**: 2026-04-06
-**Status**: Design ready
+## Key Design Principle: Avoid Overfitting Calibration
 
-### Objectives
-1. Calibrate utility function parameter λ
-2. Validate action library effects (ΔJ, Δγ)
-3. Verify utility function ranking matches early-loss ranking
+**Risk**: If we calibrate λ and action effects on the SAME data used for main search, we overfit.
 
-### Experimental Design
-```
-Architectures: 8 diverse configs
-  - width: {32, 64}
-  - depth: {3, 5}
-  - skip: {True, False}
-  - norm: {none, bn}
-  → 2×2×2×2 = 16 possible, select 8
+**Solution**: Calibration validates the FORMULA, not fit to data.
 
-Training: 5 epochs × 10% CIFAR-10
-Budget: ~1 GPU hour (T4)
-```
+### What We Calibrate vs What is Theory
 
-### Metrics to Collect
-- [ ] J_topo for each architecture (PI-20)
-- [ ] γ after 5 epochs
-- [ ] β estimated from loss curve
-- [ ] L1 loss (5-epoch)
-- [ ] Ranking by utility vs ranking by L1 loss
+| Component | Source | Can Overfit? |
+|-----------|--------|--------------|
+| **λ** | Theory (trade-off weight) | NO - from β and E_floor units |
+| **Action ΔJ, Δγ** | Empirical (Phase A) | YES - need held-out validation |
+| **k, B** | Phase A fit | NO - physical constants |
 
-### Expected Outcomes
-- [ ] λ calibrated to best match ranking
-- [ ] Action effects (ΔJ, Δγ) validated
-- [ ] If mismatch > 20%, identify cause
+### Session 2 Goal
+
+**NOT to fit λ** — λ ≈ 10 is from dimensional analysis.
+
+**Goal**: Validate that the FORMULA works:
+- Utility ranking correlates with actual L1 loss ranking
+- Action effects (ΔJ, Δγ) have correct directions
+- Formula predictions are reasonable, not perfectly calibrated
 
 ---
 
-## Milestone 2: SU-HBO Code Framework ✅
-**Estimated**: 2026-04-06
-**Status**: Design complete (SU_HBO_ALGORITHM.md)
+## Session 2: Calibration (5% Data)
 
-### Deliverables
-- [ ] `thermorg_hbo/su_hbo.py`: Main SU-HBO class
-- [ ] `thermorg_hbo/gp_surrogate.py`: GP model with custom mean
-- [ ] `thermorg_hbo/action_library.py`: Action definitions + effects
-- [ ] `thermorg_hbo/plateau_detector.py`: Plateau detection
-- [ ] `thermorg_hbo/acquisition.py`: Expected Improvement
+**Data Split**:
+```
+CIFAR-10: 50,000 images
+├── 5% calibration (2,500 images) → Session 2 ONLY
+└── 95% main search (47,500 images) → Session 3
+```
 
-### Implementation Notes
-- Use BoTorch or GPy for surrogate
-- Custom mean function: U(A) = -E_floor(J,γ) + λ·β(γ)
-- Multi-fidelity support
+### Why 5%?
 
----
+- Sufficient to estimate β, γ from 5 epochs
+- Small enough to be "held-out" from main search
+- Large enough to get stable estimates
 
-## Milestone 3: Session 2 Execution 🔴 IN PROGRESS
-**Estimated**: ~1 GPU hour on Kaggle T4
-**Status**: Pending
+### What We Validate
 
-### Run Order
-1. Execute calibration experiment
-2. Fit λ parameter
-3. Update action library
-4. Validate ranking match
+1. **Ranking Validation**:
+   - Train 8 diverse architectures for 5 epochs on calibration set
+   - Rank by utility U = -E_floor + λ·β
+   - Rank by actual L1 loss
+   - Check: correlation r > 0.7?
+
+2. **Action Effect Validation**:
+   - Verify ΔJ, Δγ directions are correct
+   - e.g., add_BN → γ decreases? (yes, expected)
+   - e.g., add_skip → J increases? (yes, expected)
+
+3. **Formula Sanity Check**:
+   - E_floor values are in reasonable range (0.1 - 1.0)
+   - β values are in reasonable range (0.1 - 0.5)
+   - Stability margin γ < 1/(B·J) holds
 
 ### Success Criteria
-- Utility ranking correlates with L1 loss ranking (r > 0.7)
-- Action effects match expected directions
+
+| Check | Threshold | Pass/Fail |
+|-------|-----------|-----------|
+| Utility vs L1 ranking correlation | r > 0.7 | TBD |
+| add_BN reduces γ | Δγ < 0 | TBD |
+| add_skip increases J | ΔJ > 0 | TBD |
+| E_floor range | 0.1 < E < 1.0 | TBD |
 
 ---
 
-## Milestone 4: Full SU-HBO Validation 🔴 IN PROGRESS
-**Estimated**: ~8 GPU hours
-**Status**: Pending
+## Session 3: Full SU-HBO (95% Data)
 
-### Experiment
+**Data**: 95% of CIFAR-10 (47,500 images)
+
+**Design**:
 ```
-Baseline A: Random architecture search (N=20 archs, 200 epochs each)
-Baseline B: Discrete HBO (N=20 archs, multi-fidelity)
-OURS: SU-HBO (N=20, multi-fidelity + stepwise + utility)
-
-Total: ~30 GPU hours
+SU-HBO (N=20 architectures, multi-fidelity)
+vs
+Random Search (N=20, full training)
+vs  
+Discrete HBO (N=20, multi-fidelity)
 ```
-
-### Metrics
-- [ ] Final validation loss
-- [ ] Sample efficiency (GPU hours to reach target loss)
-- [ ] Correlation: predicted U vs actual performance
-- [ ] Architecture complexity vs performance
 
 ### Success Criteria
-- [ ] SU-HBO achieves comparable/better final loss than baselines
-- [ ] SU-HBO uses <50% of GPU hours vs brute-force
-- [ ] Stepwise modifications are interpretable
+
+| Metric | Threshold | Notes |
+|--------|-----------|-------|
+| SU-HBO final loss | Comparable to best baseline | Within 5% |
+| Sample efficiency | <50% of Random Search GPU hours | Key advantage |
+| Action interpretability | >80% actions make sense | Check logs |
 
 ---
 
-## Milestone 5: Analysis & Paper 🔴 IN PROGRESS
-**Estimated**: 2026-04-07+
-**Status**: Pending
+## Session 4: Ablation Studies (~4 GPU hours)
 
-### Tasks
-- [ ] Analyze SU-HBO decisions (which actions were taken)
-- [ ] Ablation: SU-HBO vs HBO-only vs utility-only
-- [ ] Update THEORY.md with Phase B findings
-- [ ] Update paper draft
+### Ablations
 
-### Paper Structure
-```
-6. Phase B: Automated Architecture Design
-   6.1 SU-HBO Algorithm
-   6.2 Calibration (Session 2)
-   6.3 Experimental Results
-   6.4 Comparison to Baselines
-```
+1. **λ sweep**: λ = {1, 5, 10, 50, 100}
+   - Does utility ranking change significantly?
+   - Is λ robust?
+
+2. **Action effects**: 
+   - Calibrated vs default effects
+   - Does calibration improve results?
+
+3. **Utility vs greedy**:
+   - SU-HBO vs greedy (always accept best candidate)
+   - Is GP acquisition worth it?
 
 ---
 
 ## Resource Estimate
 
-| Phase | GPU Hours | Notes |
-|-------|-----------|-------|
-| Session 2 (Calibration) | ~1 | 8 archs × 5 epochs |
-| Session 3 (Full HBO) | ~8 | 20 archs × mixed fidelities |
-| Ablation studies | ~4 | HBO-only, utility-only |
+| Phase | GPU Hours | Data |
+|-------|-----------|------|
+| Session 2 (Calibration) | ~1 | 5% CIFAR-10 |
+| Session 3 (Full SU-HBO) | ~8 | 95% CIFAR-10 |
+| Session 4 (Ablation) | ~4 | 95% CIFAR-10 |
 | **Total Phase B** | **~13** | Within weekly quota |
 
 ---
@@ -137,13 +130,28 @@ Total: ~30 GPU hours
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
-| λ calibration fails | Low | Use simulation values (λ=10) |
-| Action effects wrong | Medium | Update library after Session 2 |
-| GP overfits | Medium | Use multi-fidelity to regularize |
-| Plateau detection triggers too early | Low | Tune ε_β, ε_γ thresholds |
+| Calibration overfits to 5% | Low | Use multiple random 5% subsamples |
+| λ wrong | Medium | λ from theory, not fit; test λ sweep in ablation |
+| Action effects wrong | Medium | Update after Session 2 if directions wrong |
+| GP overfits | Medium | Multi-fidelity + regularization |
 
 ---
 
-## Next Action
-**Immediate**: Start Session 2 calibration on Kaggle
+## Next Actions
 
+1. **Session 2 Notebook**: Create calibration experiment on Kaggle
+2. **Run Session 2**: ~1 hour on T4
+3. **Analyze**: Check ranking correlation
+4. **Session 3**: If Session 2 passes, proceed to full SU-HBO
+
+---
+
+## Updated: 2026-04-06
+
+## Status
+
+- [x] SU-HBO Algorithm designed
+- [x] SU-HBO Package implemented (tests pass)
+- [ ] Session 2: Calibration (PENDING)
+- [ ] Session 3: Full SU-HBO (PENDING)
+- [ ] Session 4: Ablation (PENDING)
