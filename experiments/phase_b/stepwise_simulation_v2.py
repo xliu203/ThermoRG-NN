@@ -138,69 +138,45 @@ def compute_loss_trajectory(arch: ArchConfig, n_epochs=200):
 
 
 def compute_j_topo_evo(arch: ArchConfig, n_epochs=200):
-    """J_topo evolves during training — from random init to trained."""
-    j_init = arch.j_topo()
+    """J_topo is STATIC — computed from architecture, does NOT change during training.
 
-    # J_topo starts high (random), decreases during training
-    # then stabilizes
-    j_evo = j_init * np.exp(-0.01 * np.arange(n_epochs))
-    j_evo = np.maximum(j_evo, j_init * 0.7)  # floor at 70% of init
+    Key insight from Leo: J_topo depends only on architecture structure
+    (width, depth, skip connections), not on training state.
+    """
+    j_static = arch.j_topo()
+    j_evo = np.full(n_epochs, j_static)  # constant throughout training
 
-    return j_init, j_evo
+    return j_static, j_evo
 
 
 # ─── PARAMETER TRACKING ──────────────────────────────────────────────────────
 
 def track_parameters(arch: ArchConfig, n_epochs=200):
-    """Track all ThermoRG parameters during training."""
+    """Track all ThermoRG parameters during training.
+
+    KEY: J_topo is STATIC (architecture property)
+         Only β(t) and γ(t) evolve during training
+    """
     print(f"\n{'='*60}")
     print(f"ARCHITECTURE: {arch.name}")
     print(f"  width={arch.width}, depth={arch.depth}, skip={arch.skip}, norm={arch.norm}")
     print(f"  β (true)={arch.beta:.4f}, E_floor={arch.e_floor:.4f}, γ_init={arch.gamma_init:.4f}")
-    print(f"  J_topo (init)={arch.j_topo():.4f}")
+    print(f"  J_topo (STATIC)={arch.j_topo():.4f}")
     print(f"{'='*60}")
 
-    # Ground truth evolution
-    j_init, j_evo = compute_j_topo_evo(arch, n_epochs)
+    # J_topo is STATIC — does NOT change during training
+    j_static, j_evo = compute_j_topo_evo(arch, n_epochs)
+
+    # β(t) and γ(t) evolve — three phases
     losses, betas_true, gammas_true = compute_loss_trajectory(arch, n_epochs)
-
-    # Estimate β from loss curve (fitting window)
-    betas_est = []
-    for epoch in range(n_epochs):
-        if epoch < 10:
-            betas_est.append(np.nan)
-        else:
-            # Fit beta from recent loss change
-            window = min(10, epoch)
-            recent_losses = losses[max(0, epoch-window):epoch+1]
-            if len(recent_losses) > 1 and recent_losses[0] > recent_losses[-1]:
-                beta_est = -np.log(recent_losses[-1]/recent_losses[0]) / window
-                betas_est.append(beta_est)
-            else:
-                betas_est.append(np.nan)
-    betas_est = np.array(betas_est)
-
-    # Estimate γ from activation variance (simplified)
-    gammas_est = []
-    for epoch in range(n_epochs):
-        if epoch < 5:
-            gammas_est.append(np.nan)
-        else:
-            # γ estimate from loss curvature
-            gamma_est = arch.gamma_init * (1 - 0.3 * epoch / 50) if epoch < 50 else arch.gamma_init * 0.7
-            gamma_est += np.random.normal(0, 0.05)
-            gammas_est.append(float(gamma_est))
-    gammas_est = np.array(gammas_est)
 
     return {
         'epochs': np.arange(n_epochs),
         'loss': losses,
-        'j_topo_init': j_init,
+        'j_topo_static': j_static,
         'j_topo_evo': j_evo,
         'beta_true': betas_true,
-        'beta_est': betas_est,
         'gamma_true': gammas_true,
-        'gamma_est': gammas_est,
     }
 
 
@@ -322,6 +298,7 @@ def compare_architectures():
         print(f"\nFinal loss ({arch.name}): {data['loss'][-1]:.4f}")
         print(f"Final β ({arch.name}): {data['beta_true'][-1]:.4f}")
         print(f"Final γ ({arch.name}): {data['gamma_true'][-1]:.4f}")
+        print(f"J_topo ({arch.name}): {data['j_topo_static']:.4f} (STATIC)")
 
     # Summary table
     print(f"\n{'='*60}")
@@ -332,7 +309,7 @@ def compare_architectures():
     print(f"{'Final Loss':<25} {results[correct.name]['loss'][-1]:<15.4f} {results[wrong.name]['loss'][-1]:<15.4f}")
     print(f"{'Final β':<25} {results[correct.name]['beta_true'][-1]:<15.4f} {results[wrong.name]['beta_true'][-1]:<15.4f}")
     print(f"{'Final γ':<25} {results[correct.name]['gamma_true'][-1]:<15.4f} {results[wrong.name]['gamma_true'][-1]:<15.4f}")
-    print(f"{'J_topo (init)':<25} {results[correct.name]['j_topo_init']:<15.4f} {results[wrong.name]['j_topo_init']:<15.4f}")
+    print(f"{'J_topo (STATIC)':<25} {results[correct.name]['j_topo_static']:<15.4f} {results[wrong.name]['j_topo_static']:<15.4f}")
 
     return results
 
@@ -342,6 +319,9 @@ def compare_architectures():
 def main():
     print("ThermoRG Training Phase Evolution Validation")
     print("=" * 60)
+    print()
+    print("KEY: J_topo is STATIC (architecture property)")
+    print("     Only β(t) and γ(t) evolve during training")
     print()
 
     # Test with correct architecture
@@ -363,16 +343,14 @@ def main():
             'beta_true': data_correct['beta_true'].tolist(),
             'gamma_true': data_correct['gamma_true'].tolist(),
             'loss': data_correct['loss'].tolist(),
-            'j_topo_init': float(data_correct['j_topo_init']),
-            'j_topo_evo': data_correct['j_topo_evo'].tolist(),
+            'j_topo_static': float(data_correct['j_topo_static']),
         },
         'wrong': {
             'arch': wrong.name,
             'beta_true': data_wrong['beta_true'].tolist(),
             'gamma_true': data_wrong['gamma_true'].tolist(),
             'loss': data_wrong['loss'].tolist(),
-            'j_topo_init': float(data_wrong['j_topo_init']),
-            'j_topo_evo': data_wrong['j_topo_evo'].tolist(),
+            'j_topo_static': float(data_wrong['j_topo_static']),
         }
     }
 
