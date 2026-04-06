@@ -30,14 +30,20 @@
 
 ---
 
-## Session 2: Calibration (5% Data)
+## Session 2: Calibration (5% Data) - RUN TWICE
 
 **Data Split**:
 ```
 CIFAR-10: 50,000 images
-├── 5% calibration (2,500 images) → Session 2 ONLY
-└── 95% main search (47,500 images) → Session 3
+├── 5% calibration Run A (seed=42, 2,500 images)
+├── 5% calibration Run B (seed=123, 2,500 images)
+└── 90% main search (45,000 images) → Session 3
 ```
+
+**Why twice?**
+- Validate robustness across random subsets
+- If both runs pass, formula is robust
+- If one fails, investigate why
 
 ### Why 5%?
 
@@ -119,10 +125,11 @@ Discrete HBO (N=20, multi-fidelity)
 
 | Phase | GPU Hours | Data |
 |-------|-----------|------|
-| Session 2 (Calibration) | ~1 | 5% CIFAR-10 |
-| Session 3 (Full SU-HBO) | ~8 | 95% CIFAR-10 |
-| Session 4 (Ablation) | ~4 | 95% CIFAR-10 |
-| **Total Phase B** | **~13** | Within weekly quota |
+| Session 2 Run A (Calibration) | ~10 min | 5% CIFAR-10 |
+| Session 2 Run B (Calibration) | ~10 min | 5% CIFAR-10 (diff seed) |
+| Session 3 (Full SU-HBO) | ~8 | 90% CIFAR-10 |
+| Session 4 (Ablation) | ~4 | 90% CIFAR-10 |
+| **Total Phase B** | **~9** | Within weekly quota |
 
 ---
 
