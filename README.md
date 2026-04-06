@@ -1,113 +1,144 @@
 # ThermoRG-NN
 
-**Thermodynamic theory of neural network scaling.**
+**Thermodynamic Theory of Neural Architecture Scaling**
 
-This repository contains the code and experiments for validating the ThermoRG framework, which proposes that the data-efficiency scaling behavior of neural networks is governed by a thermodynamic framework involving:
+A framework for analyzing and optimizing neural network architectures using thermodynamic principles and manifold geometry.
 
-- **Topological information flow** (J_topo) across layers
-- **Effective task complexity** via participation ratio (d_task^PR)
-- **Edge of Stability** (EoS) as the optimal training regime
-- **Power-law D-scaling**: L(D) = α·D^(-β) + E
-
-## Papers
-
-| Paper | Status | Description |
-|-------|--------|-------------|
-| `papers/unified_framework_paper_final.tex` | Complete | ThermoRG theory + Phase S0 validation |
-| `papers/applied_theory_paper_final.tex` | Draft | Application to real CIFAR-10 architectures |
-
-## Experiments
-
-### Phase S0 (Simulation — Complete ✅)
-
-**Validated 3 core predictions** with RFF synthetic tasks across 5 FC architectures:
-
-| Conclusion | Result |
-|-----------|--------|
-| Power-law D-scaling (R² > 0.9) | ✅ All 5 archs |
-| β ≈ β_eff = s/d_task^PR | ✅ Within 3× |
-| β ∝ J_topo (r=0.86, p=0.06) | ✅ Confirmed |
-| α ∝ J_topo² (r=0.83, p=0.09) | ✅ Confirmed |
-| J_topo predicts final loss (r=-0.955) | ✅ Strong |
-
-**Code**: `experiments/phase_s0/thermoRG_v3_results.json`
-
-### Phase A v2 (CIFAR-10 — Ready to Run)
-
-Validates the same predictions on real CIFAR-10 data with diverse architectures:
-
-- **12 architectures**: ThermoNet (width/depth families), ResNet, VGG
-- **D-scaling**: D ∈ {2K, 5K, 10K, 25K, 50K}
-- **Hypotheses**: β ∝ J_topo, α ∝ J_topo²
-
-**Script**: `experiments/phase_a/phase_a_dscaling.py`
-
-```bash
-python experiments/phase_a/phase_a_dscaling.py
-```
-
-## Theory Summary
-
-### Core Metric: J_topo
-
-```
-J_topo = exp(-|Σ log η_l| / L)
-η_l = D_eff^(l) / D_eff^(l-1)
-D_eff = ||W_l||_F² / λ_max(W_l)
-```
-
-### D-Scaling Law
-
-```
-L(D) = α · D^(-β) + E
-```
-
-### Key Predictions
-
-| Prediction | Status |
-|-----------|--------|
-| β_eff = s/d_task^PR | ✅ Validated |
-| β ∝ J_topo | ✅ r=0.86 |
-| α ∝ J_topo² | ✅ r=0.83 |
-| J_topo ∈ (0,1] | ✅ All measurements |
-
-## Repository Structure
+## Project Structure
 
 ```
 ThermoRG-NN/
-├── papers/
-│   ├── unified_framework_paper_final.tex   # Theory + S0 validation
-│   └── applied_theory_paper_final.tex      # Applied theory (draft)
+├── thermorg/              # Core library (NEW in v0.2)
+│   ├── __init__.py        # Clean API exports
+│   ├── j_topo.py          # J_topo computation with stride correction
+│   ├── scaling.py         # D-scaling law fitting
+│   ├── cooling.py          # Cooling factor φ(γ) computation
+│   └── utils.py            # Common utilities
+│
+├── theory/
+│   └── THEORY.md          # Current theory framework (v9)
+│
 ├── experiments/
-│   ├── phase_s0/                           # Simulation experiments
-│   │   └── thermoRG_v3_results.json
-│   └── phase_a/                            # CIFAR-10 experiments
-│       └── phase_a_dscaling.py             # Phase A v2 (ready to run)
-└── thermorg/                              # Theory implementation
+│   ├── phase_s0/         # Phase S0: Simulation validation (RFF networks)
+│   ├── phase_s1/          # Phase S1: Small-scale validation
+│   ├── phase_a/           # Phase A: ThermoNet architecture scaling
+│   ├── phase_b/           # Phase B: Joint selection (J_topo + capacity)
+│   └── phase_4/           # Phase 4: Stride/pooling RG correction
+│
+├── src/                   # Legacy source packages
+│   ├── thermorg/          # Original thermorg package (pre-v0.2)
+│   ├── thermorg_hbo/      # HBO variant
+│   └── thermorg_suhbo/    # SU-HBO variant
+│
+├── papers/                # Paper LaTeX sources
+└── examples/             # Example scripts
 ```
 
-## Key Files
+## Quick Start
 
-- `experiments/phase_s0/thermoRG_v3_results.json` — Phase S0 raw results
-- `experiments/phase_a/phase_a_dscaling.py` — Phase A v2 script
-- `experiments/PHASE_A_REDESIGN.md` — Phase A design rationale
+### Using the Core Library
 
-## Setup
+```python
+import torch.nn as nn
+from thermorg import compute_J_topo, fit_scaling_law, phi_from_delta
+
+# Build a model
+model = nn.Sequential(
+    nn.Conv2d(3, 64, 3, padding=1),
+    nn.Conv2d(64, 128, 3, stride=2, padding=1),  # stride-2
+    nn.AdaptiveAvgPool2d((1, 1)),
+    nn.Flatten(),
+    nn.Linear(128, 10)
+)
+
+# Compute J_topo
+J, etas = compute_J_topo(model)
+print(f"J_topo = {J:.4f}")  # Information flow quality
+
+# Compute cooling factor for stride-2 layers
+phi = phi_from_delta(n_s=1)  # 1 stride-2 layer
+print(f"φ = {phi:.2f}")  # ≈ 0.87
+
+# Fit scaling law
+from thermorg import scaling_law
+D = [100, 500, 1000, 5000]
+L = [0.8, 0.4, 0.25, 0.15]
+alpha, beta, eps, rmse = fit_scaling_law(D, L)
+```
+
+### Available Modules
+
+| Module | Functions |
+|--------|-----------|
+| `j_topo` | `compute_J_topo`, `compute_D_eff`, `compute_D_eff_total`, `count_parameters` |
+| `scaling` | `scaling_law`, `fit_scaling_law`, `predict_loss`, `compute_optimal_temperature` |
+| `cooling` | `phi_from_delta`, `get_cooling_factor`, `cooling_factor_*` schedules |
+| `utils` | `estimate_d_manifold`, `compute_capacity_bound`, `count_stride2_layers` |
+
+## Theory Overview
+
+### D-Scaling Law
+
+$$L(D) = \alpha \cdot D^{-\beta} + E$$
+
+- $D$: Training set size
+- $\alpha$: Pre-asymptotic coefficient (complexity penalty)
+- $\beta$: Scaling exponent (learning efficiency)
+- $E$: Asymptotic floor (irreducible error)
+
+### J_topo Metric
+
+$$J_{\mathrm{topo}} = \exp\!\Bigl(-\frac{1}{L}\sum_{l=1}^{L}|\log \eta_l|\Bigr)$$
+
+- $\eta_l = D_{\mathrm{eff}}^{(l)} / D_{\mathrm{eff}}^{(l-1)}$
+- $J \to 1$: Stable information flow
+- $J \to 0$: Bottlenecks or expansion issues
+
+### Stride Correction (v8+)
+
+For stride-2 layers, apply correction factor:
+
+$$\eta_{\text{corrected}} = \eta \cdot \frac{C_{\text{out}}}{C_{\text{in}} \cdot s^2}$$
+
+where $s=2$ is the stride. This accounts for spatial-channel compression.
+
+## Phase 4 Experiment
+
+The Phase 4 experiment (`experiments/phase_4/phase_4a1_stride2_validation.ipynb`) validates the stride correction theory:
+
+| Architecture | n_s | β_pred |
+|--------------|-----|--------|
+| ThermoNet-L3 | 0 | 0.86 |
+| ThermoNet-S2-1 | 1 | 0.75 |
+| ThermoNet-S2-2 | 2 | 0.65 |
+| ThermoNet-MP-2 | 2 | 0.65 |
+| ResNet-18 | 3 | 0.57 |
+
+## Installation
 
 ```bash
-pip install torch numpy scipy
-git clone https://github.com/xliu203/ThermoRG-NN.git
-cd ThermoRG-NN
+pip install -e .
 ```
 
-CIFAR-10 data will be downloaded automatically by the training script.
+Or add to `sys.path`:
 
-## Citation
-
-```bibtex
-@article{liu2026thermorgnn,
-  title={ThermoRG-NN: Thermodynamic Scaling in Neural Architecture},
-  author={Liu, Leo},
-  year={2026}
-}
+```python
+import sys
+sys.path.insert(0, '/path/to/ThermoRG-NN')
+from thermorg import compute_J_topo
 ```
+
+## References
+
+- Theory: [`theory/THEORY.md`](theory/THEORY.md) (v9)
+- Paper: [`papers/unified_framework_paper_final.tex`](papers/unified_framework_paper_final.tex)
+
+## Changelog
+
+### v0.2.0 (2026-04-06)
+- **New**: `thermorg/` core library at root level
+- **New**: J_topo with stride correction
+- **New**: D-scaling law fitting
+- **New**: Cooling factor computation
+- **New**: `experiments/phase_4/` directory
+- **Cleaned**: `theory/` directory (removed duplicate)
