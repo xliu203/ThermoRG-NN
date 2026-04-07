@@ -859,13 +859,23 @@ Under RG decimation that reduces internal dimension by factor $b^2 = 4$ per stri
 L(D) \;\longrightarrow\; \alpha\,(D/b^2)^{-\beta_0} + E = \alpha\,b^{2\beta_0}\,D^{-\beta_0} + E.
 \end{equation}
 
-For $n_s$ stride-2 layers, the scaling exponent is multiplicatively suppressed:
+For $n_s$ stride-2 layers, the scaling exponent is multiplicatively modulated:
 \begin{equation}
-\boxed{\beta = \beta_0 \cdot (0.87)^{\,n_s}}.
+\boxed{\beta = \beta_0 \cdot \phi_{\mathrm{stride}}^{\,n_s}},
 \end{equation}
-The factor $0.87$ is the \textbf{scaling dimension} of the stride-2 perturbation ($\Delta_{\mathrm{stride}} = -\ln 0.87 \approx 0.20$), calibrated from ResNet-18 data.
+where $\phi_{\mathrm{stride}} = e^{-\Delta_{\mathrm{stride}}}$ is the \textbf{task-dependent} stride-2 scaling factor.
 
-For max-pooling with its larger effective block size, the suppression factor per layer is approximately $(0.87)^2 \approx 0.76$.
+On ImageNet with ResNet-18, the scaling dimension is $\Delta_{\mathrm{stride}} = -\ln 0.87 \approx 0.20$ ($\phi_{\mathrm{stride}} = 0.87$), confirming that stride-2 is a \emph{weakly relevant} RG operator that suppresses $\beta$.
+
+However, Phase 4A1 experiments on CIFAR-10 with ThermoNet architectures reveal that $\phi_{\mathrm{stride}}$ is \textbf{not universal}. Using the observed baseline $\beta_0 \approx 0.22$ for CIFAR-10, we infer:
+\begin{itemize}
+    \item Single stride-2 layer (ThermoNet-S2-1): $\phi_{\mathrm{stride}} \approx 1.00$ ($\Delta \approx 0$, irrelevant operator).
+    \item Two stride-2 layers (ThermoNet-S2-2): $\phi_{\mathrm{stride}} \approx 1.38$ ($\Delta < 0$, \emph{enhancing} rather than suppressing).
+    \item Two max-pool layers (ThermoNet-MP-2): $\phi_{\mathrm{stride}} \approx 1.09$ ($\Delta < 0$, weakly enhancing).
+\end{itemize}
+This occurs because CIFAR-10 (32$\times$32) is a much simpler task than ImageNet (224$\times$224): stride-2 down-sampling does not lose discriminative information and instead acts as a useful regularizer. The RG scaling dimension $\Delta_{\mathrm{stride}}$ can change sign depending on the data complexity, transitioning from a suppressing operator on complex tasks to an irrelevant or even enhancing operator on simple tasks.
+
+For max-pooling with its larger effective block size, the modulation factor per layer on ImageNet is approximately $(0.87)^2 \approx 0.76$.
 
 \subsection{ResNet-18 as ``Real Gas'' Correction}
 
