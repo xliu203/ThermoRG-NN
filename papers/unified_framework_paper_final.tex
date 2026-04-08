@@ -330,7 +330,7 @@ SGD-trained neural networks exhibit \emph{spectral bias}: they learn the dominan
 \begin{theo}[Unified Scaling Law]\label{theo:unified_scaling}
 The scaling exponent $\alpha$ for architecture $\sA$ on dataset $\sD$ is given by:
 \begin{equation}
-\alpha = \underbrace{k_\alpha}_{\text{scaling constant}} \cdot \underbrace{\Bigl|\log\prod_{l=1}^{L} \eta_l\Bigr|}_{\text{logarithmic compression penalty}} \cdot \underbrace{\frac{2s}{d_{\text{manifold}}}}_{\text{data fundamental limit}} \cdot \underbrace{\psi(T_{\text{eff}})}_{\text{thermodynamic exploration phase}} \cdot \underbrace{\phi(\gamma_{\text{cool}}, \text{Scheduler})}_{\text{non-equilibrium cooling dynamics}} \cdot \underbrace{\epsilon(\text{Coupling})}_{\text{coupling correction factor}}.
+\alpha = \underbrace{k_\alpha}_{\text{scaling constant}} \cdot \underbrace{\Bigl|\log\prod_{l=1}^{L} \eta_l\Bigr|}_{\text{logarithmic compression penalty}} \cdot \underbrace{\frac{2s}{d_{\text{manifold}}}}_{\text{data fundamental limit}} \cdot \underbrace{\psi(T_{\text{eff}})}_{\text{thermodynamic exploration phase}} \cdot \underbrace{\beta(\gamma)}_{\text{cooling dynamics}} \cdot \underbrace{\epsilon(\text{Coupling})}_{\text{coupling correction factor}}.
 \label{eq:unified_scaling}
 \end{equation}
 \end{theo}
@@ -364,7 +364,7 @@ The thermodynamic exploration factor $\psi$ and cooling dynamics factor $\phi$ t
 \qquad
 \phi(\gamma_{\mathrm{cool}}) = \frac{\gamma_c}{\gamma_c + |\gamma_{\mathrm{cool}}|}\,\exp\!\Bigl(-\frac{|\gamma_{\mathrm{cool}}|}{\gamma_c}\Bigr).
 \end{equation}
-Here $T_c$ is the \emph{critical temperature} derived from the Edge of Stability condition (see \S\ref{sec:EoS}), and $\gamma_c$ is a characteristic cooling rate scale. The response function $\psi$ peaks at $T_{\mathrm{eff}}=T_c$ with $\psi(T_c)=1$, vanishes at $T_{\mathrm{eff}}\to0$ (cold deadlock) and $T_{\mathrm{eff}}\to\infty$ (thermal divergence). The cooling factor $\phi$ is symmetric in heating ($\gamma<0$) and cooling ($\gamma>0$) phases.
+Here $T_c$ is the \emph{critical temperature} derived from the Edge of Stability condition (see \S\ref{sec:EoS}), and $\\gamma_c \\approx 2.0$ is the EOS critical variance fluctuation. The response function $\psi$ peaks at $T_{\\mathrm{eff}}=T_c$ with $\psi(T_c)=1$, vanishes at $T_{\\mathrm{eff}}\\to0$ (cold deadlock) and $T_{\\mathrm{eff}}\\to\\infty$ (thermal divergence). The cooling dynamics enters through $\\beta(\\gamma) = a\\ln(\\gamma/\\gamma_c) + \\beta_c$, which is not symmetric.
 \endRemark}
 
 \begin remark}[Derivation of Asymptotic Error Floor $E_\mathrm{floor}(J, \gamma)$]\label{rem:E_floor_derivation}
@@ -386,7 +386,7 @@ where $\alpha = c \cdot J$ and $B = ck$ is a combined constant.
 
 \medskip\noindent\textbf{Critical condition.} The denominator must be positive: $\gamma < 1/(B J)$. This defines the \emph{Edge of Stability} boundary—beyond this, training diverges. This explains why BatchNorm (which reduces $\gamma$) is essential for stable training.
 
-\medskip\noindent\textbf{BN cooling factor $\phi_{\mathrm{BN}} \approx 2.05$.} The variance fluctuation $\gamma$ is reduced by BatchNorm from $\gamma_{\mathrm{None}} = 3.36$ to $\gamma_{\mathrm{BN}} = 2.36$. Using the cooling factor formula $\phi(\gamma) = \gamma_c/(\gamma_c + \gamma)\cdot e^{-\gamma/\gamma_c}$ with $\gamma_c \approx 2.0$:
+\medskip\noindent\textbf{BN reduces $\beta$ by 15\%.} BatchNorm reduces $\gamma$ from $\gamma_{\\mathrm{None}} = 3.39$ to $\\gamma_{\\mathrm{BN}} = 2.29$, and $\\beta$ from $1.117$ to $0.950$. Using $\\beta(\\gamma) = 0.425\\ln(\\gamma/2.0) + 0.893$:
 \begin{equation}
 \frac{\phi_{\mathrm{BN}}}{\phi_{\mathrm{None}}} = \frac{\phi(2.36)}{\phi(3.36)} \approx 2.05 = \frac{\beta_{\mathrm{BN}}}{\beta_{\mathrm{None}}},
 \end{equation}
@@ -399,10 +399,10 @@ confirming that BatchNorm approximately doubles the learning efficiency $\beta$.
 \toprule
 Configuration & $J$ & $\gamma$ & Observed $E$ \\
 \midrule
-None & 0.25 & 3.36 & 0.28 \\
-BN & 0.30 & 2.36 & 0.18 \\
-Skip & 0.60 & 3.36 & 0.26 \\
-Skip+BN & 0.65 & 2.36 & 0.18 \\
+None & 0.25 & 3.39 & 0.28 \\
+BN & 0.30 & 2.29 & 0.18 \\
+Skip & 0.60 & 3.39 & 0.26 \\
+Skip+BN & 0.65 & 2.29 & 0.18 \\
 \bottomrule
 \end{tabular}
 
