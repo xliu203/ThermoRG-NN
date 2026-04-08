@@ -47,6 +47,9 @@ from .scaling import (
     predict_loss,
     compute_optimal_temperature,
     unified_scaling_law,
+    beta_gamma,
+    gamma_ratio_effect,
+    compute_gamma_critical,
 )
 
 from .cooling import (
@@ -59,6 +62,14 @@ from .cooling import (
     phi_ratio_BN,
     phi_from_delta,
     phi,
+    beta_gamma,
+    phi_gamma_ratio,
+)
+
+from .scaling import (
+    beta_gamma as beta_gamma_scaling,
+    gamma_ratio_effect,
+    compute_gamma_critical,
 )
 
 from .utils import (
@@ -89,6 +100,9 @@ __all__ = [
     'predict_loss',
     'compute_optimal_temperature',
     'unified_scaling_law',
+    'beta_gamma',
+    'gamma_ratio_effect',
+    'compute_gamma_critical',
     # cooling
     'cooling_factor_linear',
     'cooling_factor_exponential',
@@ -99,6 +113,7 @@ __all__ = [
     'phi_ratio_BN',
     'phi_from_delta',
     'phi',
+    'phi_gamma_ratio',
     # utils
     'estimate_d_manifold',
     'compute_capacity_bound',
