@@ -8,111 +8,164 @@ A framework for analyzing and optimizing neural network architectures using ther
 
 ```
 ThermoRG-NN/
-├── thermorg/              # Core library (NEW in v0.2)
+├── thermorg/              # Core library
 │   ├── __init__.py        # Clean API exports
 │   ├── j_topo.py          # J_topo computation with stride correction
 │   ├── scaling.py         # D-scaling law fitting
-│   ├── cooling.py          # Cooling factor φ(γ) computation
-│   └── utils.py            # Common utilities
+│   ├── cooling.py         # Cooling factor φ(γ) computation
+│   └── utils.py           # Common utilities
 │
 ├── theory/
-│   └── THEORY.md          # Current theory framework (v9)
+│   └── THEORY.md          # Current theory framework (v9+)
 │
 ├── experiments/
-│   ├── phase_s0/         # Phase S0: Simulation validation (RFF networks)
-│   ├── phase_s1/          # Phase S1: Small-scale validation
-│   ├── phase_a/           # Phase A: ThermoNet architecture scaling
-│   ├── phase_b/           # Phase B: Joint selection (J_topo + capacity)
+│   ├── phase_s0/          # Phase S0: RFF simulation
+│   ├── phase_s1/          # Phase S1: Cooling theory (BN, LN, None)
+│   ├── phase_a/           # Phase A: ThermoNet training (87 runs)
+│   ├── phase_b/            # Phase B: Architecture selection (HBO vs Random)
 │   └── phase_4/           # Phase 4: Stride/pooling RG correction
 │
 ├── src/                   # Legacy source packages
-│   ├── thermorg/          # Original thermorg package (pre-v0.2)
-│   ├── thermorg_hbo/      # HBO variant
-│   └── thermorg_suhbo/    # SU-HBO variant
-│
 ├── papers/                # Paper LaTeX sources
-└── examples/             # Example scripts
+└── examples/              # Example scripts
 ```
 
 ## Quick Start
 
-### Using the Core Library
+### Compute J_topo
 
 ```python
 import torch.nn as nn
-from thermorg import compute_J_topo, fit_scaling_law, phi_from_delta
+from thermorg import compute_J_topo
 
-# Build a model
-model = nn.Sequential(
-    nn.Conv2d(3, 64, 3, padding=1),
-    nn.Conv2d(64, 128, 3, stride=2, padding=1),  # stride-2
-    nn.AdaptiveAvgPool2d((1, 1)),
-    nn.Flatten(),
-    nn.Linear(128, 10)
-)
-
-# Compute J_topo
+model = YourModel()
 J, etas = compute_J_topo(model)
-print(f"J_topo = {J:.4f}")  # Information flow quality
-
-# Compute cooling factor for stride-2 layers
-phi = phi_from_delta(n_s=1)  # 1 stride-2 layer
-print(f"φ = {phi:.2f}")  # ≈ 0.87
-
-# Fit scaling law
-from thermorg import scaling_law
-D = [100, 500, 1000, 5000]
-L = [0.8, 0.4, 0.25, 0.15]
-alpha, beta, eps, rmse = fit_scaling_law(D, L)
+print(f"J_topo = {J:.4f}")  # 0 = bottleneck, 1 = uniform info flow
 ```
-
-### Available Modules
-
-| Module | Functions |
-|--------|-----------|
-| `j_topo` | `compute_J_topo`, `compute_D_eff`, `compute_D_eff_total`, `count_parameters` |
-| `scaling` | `scaling_law`, `fit_scaling_law`, `predict_loss`, `compute_optimal_temperature` |
-| `cooling` | `phi_from_delta`, `get_cooling_factor`, `cooling_factor_*` schedules |
-| `utils` | `estimate_d_manifold`, `compute_capacity_bound`, `count_stride2_layers` |
-
-## Theory Overview
 
 ### D-Scaling Law
 
-$$L(D) = \alpha \cdot D^{-\beta} + E$$
+```python
+from thermorg import scaling_law, fit_scaling_law
 
-- $D$: Training set size
-- $\alpha$: Pre-asymptotic coefficient (complexity penalty)
-- $\beta$: Scaling exponent (learning efficiency)
-- $E$: Asymptotic floor (irreducible error)
+D = [100, 500, 1000, 5000]
+L = [0.8, 0.4, 0.25, 0.15]
+alpha, beta, E_floor, rmse = fit_scaling_law(D, L)
+print(f"L(D) = {alpha:.3f} * D^(-{beta:.3f}) + {E_floor:.3f}")
+```
+
+### Cooling Theory
+
+```python
+from thermorg import beta_gamma
+
+gamma = 2.29  # BatchNorm variance fluctuation
+beta = beta_gamma(gamma)
+print(f"β = {beta:.3f}")  # ≈ 0.950
+```
+
+---
+
+## Theory Overview
+
+### Core D-Scaling Law
+
+$$L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}$$
+
+- $D$: Network width (dominant scaling variable)
+- $\alpha$: Pre-asymptotic coefficient
+- $\beta$: Scaling exponent (learning efficiency per unit width)
+- $E_{\mathrm{floor}}$: Asymptotic error floor
 
 ### J_topo Metric
 
 $$J_{\mathrm{topo}} = \exp\!\Bigl(-\frac{1}{L}\sum_{l=1}^{L}|\log \eta_l|\Bigr)$$
 
-- $\eta_l = D_{\mathrm{eff}}^{(l)} / D_{\mathrm{eff}}^{(l-1)}$
-- $J \to 1$: Stable information flow
-- $J \to 0$: Bottlenecks or expansion issues
+- $\eta_l = D_{\mathrm{eff}}^{(l)} / D_{\mathrm{eff}}^{(l-1)}$ (per-layer expansion ratio)
+- $D_{\mathrm{eff}} = \|W\|_F^2 / \lambda_{\max}^2$ (effective dimensionality)
+- $J \to 1$: Uniform information flow (all $\eta_l \approx 1$)
+- $J \to 0$: Bottlenecks or pathological expansions
+- **Zero-cost**: Computed from initialization weights alone
 
-### Stride Correction (v8+)
+### J_topo Width Dependence: α_GELU ≈ 0.45
 
-For stride-2 layers, apply correction factor:
+J_topo decreases with width D due to the GELU nonlinearity:
 
-$$\eta_{\text{corrected}} = \eta \cdot \frac{C_{\text{out}}}{C_{\text{in}} \cdot s^2}$$
+$$J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}, \quad \alpha_{\mathrm{GELU}} \approx 0.45$$
 
-where $s=2$ is the stride. This accounts for spatial-channel compression.
+- Verified: depth=3 slope=-0.150, depth=5 slope=-0.087 ✅
+- Mechanism: GELU saturates for large |x|, making λ_max grow as D^0.52 (not √D)
+- BN/LN do NOT affect this scaling (they are excluded from J_topo computation)
 
-## Phase 4 Experiment
+### H1: β ∝ J_topo
 
-The Phase 4 experiment (`experiments/phase_4/phase_4a1_stride2_validation.ipynb`) validates the stride correction theory:
+Higher J_topo → higher β → slower width scaling decay.
+- Within families: r ≈ 0.97 ✅
+- Cross-phase: r ≈ 0.68 (ResNet-18 outlier explained by stride-2 correction)
 
-| Architecture | n_s | β_pred |
-|--------------|-----|--------|
-| ThermoNet-L3 | 0 | 0.86 |
-| ThermoNet-S2-1 | 1 | 0.75 |
-| ThermoNet-S2-2 | 2 | 0.65 |
-| ThermoNet-MP-2 | 2 | 0.65 |
-| ResNet-18 | 3 | 0.57 |
+### Cooling Theory: β(γ)
+
+$$\beta(\gamma) = 0.425 \cdot \ln(\gamma / \gamma_c) + 0.893, \quad \gamma_c \approx 2.0$$
+
+Validated across γ ∈ [0.41, 3.39] (LN → BN → None):
+
+| Configuration | γ | β (fitted) | β (theory) | Regime |
+|-------------|---|------------|------------|--------|
+| None | 3.39 | 1.117 | 1.117 ✅ | super-critical |
+| BatchNorm | 2.29 | 0.950 | 0.950 ✅ | super-critical |
+| LayerNorm | ~0.41 | 0.219 | 0.219 ✅ | **sub-critical** |
+
+### E_floor Decomposition
+
+$$E_{\mathrm{floor}} = E_{\mathrm{task}} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\nu}$$
+
+Two independent channels:
+1. **Capacity**: Width D → E_floor (dominant, r ≈ -0.83)
+2. **Topology**: J_topo → optimization difficulty → E_floor (secondary, r ≈ -0.79 within width groups)
+
+### Stride-2 as RG Blocking
+
+For stride-2 downsampling, apply correction:
+
+$$\eta_{\mathrm{corrected}} = \eta_l \cdot \frac{C_{\mathrm{out}}}{C_{\mathrm{in}} \cdot s^2}$$
+
+- CIFAR-10: φ ≈ 1.0 (irrelevant)
+- ImageNet: φ = 0.87 (suppressing)
+
+---
+
+## Phase Status
+
+| Phase | Status | Key Result |
+|-------|--------|------------|
+| S0 (RFF Simulation) | ✅ Complete | α phase transition, universal J_topo |
+| A (ThermoNet Training) | ✅ Complete | 87 runs, 9 architectures |
+| 4A1 (Stride-2 RG) | ✅ Complete | φ task-dependent |
+| S1 (Cooling β(γ)) | ✅ Complete | β(γ) validated for BN, None |
+| B1 (LN Cooling) | ✅ Complete | β_LN=0.219, R²=0.9997, γ≈0.41 |
+| B2 (HBO Round 1) | ✅ Complete | **Negative result**: Random best=0.386 vs HBO best=0.605 |
+| B3 (HBO_revised) | 🔄 Pending | Width-first + J_topo HIGH (Leo: next week) |
+
+### Phase B: Architecture Selection
+
+**Round 1 (Negative Result):**
+- HBO selected HIGH J_topo globally → picked narrow-deep nets (24/6) → capacity-limited
+- Random selected wide nets (96/6) → won decisively
+
+**Confounding Analysis (n=10):**
+| Relationship | Simple r | Partial r (width fixed) |
+|-------------|---------|------------------------|
+| J_topo → loss | +0.588 | **-0.794** (p=0.006) |
+| Width → loss | -0.829 | -0.891 |
+
+**Simpson's Paradox Resolved:** Wide networks have LOW J_topo AND LOW loss (capacity). Within fixed width, HIGH J_topo → LOW loss (optimization efficiency).
+
+**Round 2 (HBO_revised):**
+- Notebook: `experiments/phase_b/notebooks/phase_b_hbo_revised.ipynb`
+- Design: Width-first (W≥48) → top-30 by J_topo HIGH → L1 → L2
+- Expected: Should beat Random
+
+---
 
 ## Installation
 
@@ -128,17 +181,26 @@ sys.path.insert(0, '/path/to/ThermoRG-NN')
 from thermorg import compute_J_topo
 ```
 
+---
+
 ## References
 
-- Theory: [`theory/THEORY.md`](theory/THEORY.md) (v9)
-- Paper: [`papers/unified_framework_paper_final.tex`](papers/unified_framework_paper_final.tex)
+- Theory: [`theory/THEORY.md`](theory/THEORY.md)
+- Paper: [`papers/`](papers/)
 
 ## Changelog
+
+### v0.3.0 (2026-04-09)
+- **New**: LayerNorm cooling validation (β_LN=0.219, γ≈0.41, sub-critical regime)
+- **New**: J_topo(D) scaling: α_GELU=0.45 from GELU nonlinearity
+- **New**: Unified β(J_topo, γ) framework via condition number
+- **New**: Phase B2 negative result + confounding analysis
+- **New**: HBO_revised notebook (width-first + J_topo HIGH)
+- **Fixed**: LayerNorm J_topo bug in compute_J_topo (prev_D_eff chain reset)
+- **Updated**: Cooling theory β(γ) across [0.41, 3.39]
 
 ### v0.2.0 (2026-04-06)
 - **New**: `thermorg/` core library at root level
 - **New**: J_topo with stride correction
 - **New**: D-scaling law fitting
 - **New**: Cooling factor computation
-- **New**: `experiments/phase_4/` directory
-- **Cleaned**: `theory/` directory (removed duplicate)
