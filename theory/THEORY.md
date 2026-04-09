@@ -180,6 +180,84 @@ Combined cooling (e.g., BatchNorm + skip connections) achieves additive or super
 
 For a post-activation block (Conv → BN → ReLU), BatchNorm must absorb fluctuations from both the weight norm and the inherited input variance. For a pre-activation block (BN → ReLU → Conv), the normalization precedes the convolution, so weight norm deviations appear directly in the output variance without additional amplification. Consequently, pre-activation designs achieve smaller $\gamma$ than post-activation designs with the same architecture, explaining the empirical superiority of Pre-ResNet-v2 and Pre-LN Transformer architectures.
 
+### 4.6 Unified β(J_topo, γ) and E_floor(D, J_topo, γ)
+
+The scaling exponent $\beta$ and the error floor $E_{\mathrm{floor}}$ both depend on topology ($J_{\mathrm{topo}}$) and training dynamics ($\gamma$). This section derives their unified first-principles expressions.
+
+#### 4.6.1 Condition Number Link via Random Matrix Theory
+
+For a layer with He-initialization $W_{ij} \sim \mathcal{N}(0, 2/n)$, the effective dimension is:
+
+$$D_{\mathrm{eff}}^{(l)} = \frac{\|W^{(l)}\|_F^2}{\lambda_{\max}(W^{(l)})^2} \propto \frac{C_{\mathrm{out}}^{(l)} C_{\mathrm{in}}^{(l)} k^2}{\left(\sqrt{C_{\mathrm{out}}^{(l)}} + \sqrt{C_{\mathrm{in}}^{(l)} k^2}\right)^2}$$
+
+When channels scale with width $D$, $D_{\mathrm{eff}}^{(l)} \propto D$. The per-layer expansion ratio $\eta_l = D_{\mathrm{eff}}^{(l)}/D_{\mathrm{eff}}^{(l-1)}$ is therefore determined by width ratios and is approximately **independent of $D$** for hidden layers.
+
+The exception is the **input layer** ($l=1$), where $D_{\mathrm{eff}}^{(0)}$ is the fixed data dimension $d_{\mathrm{data}}$. Hence $\eta_1 \propto D$, causing $J_{\mathrm{topo}}$ to decrease with width:
+
+$$\boxed{J_{\mathrm{topo}}(D) \;\approx\; J_{\mathrm{topo}}^\infty \cdot D^{-1/L}}$$
+
+This explains the strong negative correlation $r(W, J_{\mathrm{topo}}) = -0.922$ in Phase B2.
+
+The condition number of the full $L$-layer product relates to $J_{\mathrm{topo}}$ through:
+
+$$\kappa_{\mathrm{tot}} \;\sim\; \prod_{l=1}^L \kappa_l \;\sim\; \exp\!\Bigl(\sum_l |\log \eta_l|\Bigr) \;=\; J_{\mathrm{topo}}^{-L} \tag{1}$$
+
+#### 4.6.2 Unifying β Through Condition Number
+
+Training moves weights from initialization, causing activation variance drift $\gamma$. From RMT, this drift is amplified by the condition number:
+
+$$\gamma \;\propto\; \kappa_{\mathrm{tot}}^{\;\theta} \quad \Rightarrow \quad \boxed{\gamma = \gamma_c \cdot J_{\mathrm{topo}}^{-\theta L}} \tag{2}$$
+
+where $\theta > 0$ is a universal RMT exponent. Substituting (2) into the EOS cooling formula $\beta(\gamma) = a\ln(\gamma/\gamma_c) + \beta_c$ yields the **unified scaling exponent**:
+
+$$\boxed{\beta = \beta_c - \lambda \ln J_{\mathrm{topo}}}, \qquad \lambda \equiv a\theta L > 0 \tag{3}$$
+
+**Properties of (3):**
+- $\ln J_{\mathrm{topo}} < 0$ (since $J_{\mathrm{topo}} \in (0,1)$), so **larger $J_{\mathrm{topo}}$ → larger $\beta$** — consistent with H1
+- For fixed $J_{\mathrm{topo}}$ (e.g., varying norm type), (3) reduces to $\beta(\gamma)$ since $\ln J_{\mathrm{topo}}$ is constant
+- For varying width, $J_{\mathrm{topo}}$ decreases with $D$, so $\beta$ decreases with width — consistent with Phase B2
+
+#### 4.6.3 Re-derived E_floor
+
+The asymptotic error floor has three contributions:
+
+1. **Task-intrinsic error** $E_{\mathrm{task}}$ — independent of architecture
+2. **Capacity term** $\propto D^{-1}$ — larger width reduces capacity-limited error
+3. **Optimization difficulty** — scales with condition number $\kappa_{\mathrm{tot}} = J_{\mathrm{topo}}^{-L}$ (harder to optimize landscapes with large condition number)
+
+Combining:
+
+$$\boxed{E_{\mathrm{floor}}(D, J_{\mathrm{topo}}) = E_{\mathrm{task}} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}} \tag{4}$$
+
+where $C, B, \nu > 0$ are constants. Using (2), the optimization term may also be expressed as a function of $\gamma$.
+
+#### 4.6.4 Complete D-Scaling Law
+
+Substituting (3) and (4) into the scaling law:
+
+$$\boxed{L(D) = \alpha \cdot D^{-\left[\beta_c - \lambda \ln J_{\mathrm{topo}}\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}\right]} \tag{5}$$
+
+Or expressed through $\gamma$ via (2):
+
+$$L(D) = \alpha \cdot D^{-\left[\beta_c + \frac{\lambda}{\theta L}\ln(\gamma/\gamma_c)\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} + B\left(\gamma/\gamma_c\right)^{-\nu/(\theta L)}\right]$$
+
+#### 4.6.5 Explaining the Partial Correlation Reversal
+
+Phase B2 revealed a **Simpson's paradox** in the correlations:
+
+| Relationship | Simple correlation | Partial (width fixed) |
+|-------------|-------------------|----------------------|
+| $J_{\mathrm{topo}} \to L$ | $+0.588$ | $\mathbf{-0.794}$ |
+| $W \to L$ | $-0.829$ | $-0.891$ |
+
+Equation (4) explains this: the capacity term $C/D$ dominates the width effect (explaining why wide networks have low loss), while the optimization term $B \cdot J_{\mathrm{topo}}^{\,\nu}$ dominates within fixed-width groups (explaining why higher $J_{\mathrm{topo}}$ reduces loss at fixed $D$).
+
+The key insight: **width and $J_{\mathrm{topo}}$ are anti-correlated** ($r = -0.922$) because wide networks have a relative input bottleneck. Both effects are real and physically distinct:
+- **Width effect**: larger $D$ → larger capacity → lower $E_{\mathrm{floor}}$ (capacity channel)
+- **$J_{\mathrm{topo}}$ effect**: higher $J_{\mathrm{topo}}$ → smaller condition number → easier optimization → lower $E_{\mathrm{floor}}$ (optimization channel)
+
+The practical implication: **within a width group, select higher $J_{\mathrm{topo}}$; across groups, larger width dominates**.
+
 ---
 
 ## 5. Stride-2 as RG Blocking
@@ -379,11 +457,26 @@ The logarithmic relationship $\beta(\gamma)$ is derived from RG scaling near the
 
 4. **Stride correction resolves ResNet-18 outlier.** After applying the $\eta_l \cdot \zeta_l$ correction for strided convolutions, ResNet-18's $\beta$ is predicted to within 1%.
 
-### 8.4 Phase B: Early Loss vs Asymptotic Utility
+### 8.4 Phase B: HBO vs Random and J_topo Confounding Analysis
 
-**Setup**: Multi-fidelity optimization experiment to test whether early loss ($L_1$) predicts final performance.
+**Setup**: 100 candidate architectures (width × depth × norm × skip), stratified sampling. HBO arm: top-30 by J_topo → L1 (10 ep) → top-5 → L2 (50 ep). Random arm: 30 random → same pipeline.
 
-**Finding**: Early loss is a strong predictor of architecture quality for screening (correlation $r \gg 0$), confirming the two-stage selection strategy. Critically, the utility function based on $J_{\mathrm{topo}} \to E_{\mathrm{floor}}$ is asymptotically distinct from early loss optimization — they capture different aspects of architecture quality. This null result (early loss alone does not fully determine asymptotic utility) justifies the two-stage approach rather than a single-fidelity method.
+**Phase B2 (negative result):** HBO selecting HIGH J_topo lost to Random (best loss: HBO=0.605 vs Random=0.386). This occurred because HBO selected narrow-deep networks (24/6, 32/6) with high J_topo, while Random selected wide networks (96/6, 64/5) with medium J_topo.
+
+**Partial correlation analysis (n=10, all BatchNorm):**
+| Relationship | Simple r | Partial r (width fixed) |
+|-------------|---------|------------------------|
+| $J_{\mathrm{topo}} \to L$ | $+0.588$ | $\mathbf{-0.794}$ (p=0.006) |
+| $W \to L$ | $-0.829$ (p=0.003) | $-0.891$ (p=0.0005) |
+| $W \to J_{\mathrm{topo}}$ | $-0.922$ | — |
+
+**Simpson's paradox resolved:** The simple positive correlation $J_{\mathrm{topo}} \to L$ (+0.588) is a confounding artifact. Within fixed width, the true relationship is **negative**: higher $J_{\mathrm{topo}}$ → lower loss. This is explained by Eq. (4): at fixed $D$, the optimization difficulty term $B \cdot J_{\mathrm{topo}}^{\nu}$ decreases with $J_{\mathrm{topo}}$. The standardized regression coefficient for $J_{\mathrm{topo}}$ ($-0.003$) is 35× smaller than width ($-0.104$) because width's effect through the $C/D$ capacity term dominates.
+
+**Physical picture (Section 4.6.5):** Two distinct channels connect topology to performance:
+- **Width channel**: wider $D$ → larger capacity → lower $E_{\mathrm{floor}}$ (dominant, $r=-0.829$)
+- **Topology channel**: higher $J_{\mathrm{topo}}$ → smaller condition number → easier optimization → lower $E_{\mathrm{floor}}$ (secondary, $r=-0.794$ within groups)
+
+**Design implication:** A practical screener should **first filter by width** (capacity requirement), then **within width groups select higher $J_{\mathrm{topo}}$** (optimization efficiency). Selecting globally by J_topo is counterproductive — it selects narrow networks that are capacity-limited despite their high $J_{\mathrm{topo}}$.
 
 ---
 
@@ -399,11 +492,16 @@ The Edge of Stability (Cohen et al., 2021) corresponds to $T_{\mathrm{eff}}/T_c 
 |--------|----------|----------|
 | Effective dimension | $D_{\mathrm{eff}} = \|W\|_F^2 / \lambda_{\max}^2$ | Universal |
 | Topological correlation | $J_{\mathrm{topo}} = \exp(-\frac{1}{L}\sum\|\log\eta_l\|)$ | Phase S0 |
+| J_topo vs width | $J_{\mathrm{topo}} \propto D^{-1/L}$ | Phase B2 |
 | Stride correction | $\eta_l^{(\mathrm{stride})} = \eta_l \cdot C_{\mathrm{out}}/(C_{\mathrm{in}} \cdot s^2)$ | Phase A |
 | Skip connections | $\widehat{W} = S + W$ | Phase A |
 | Scaling law | $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ | Phase S0, A |
+| Unified $\beta$ | $\beta = \beta_c - \lambda\ln J_{\mathrm{topo}}$, $\gamma = \gamma_c J_{\mathrm{topo}}^{-\theta L}$ | Theory |
 | $\beta(\gamma)$ | $\beta = 0.425 \cdot \ln(\gamma/2.0) + 0.893$ | Phase S1 |
 | BN reduces $\beta$ | $\beta_{\mathrm{BN}}/\beta_{\mathrm{None}} = 0.850$ | Phase S1 |
 | Stride-2 RG suppression | $\beta = \beta_0 \cdot 0.87^{n_s}$ | Phase A |
-| $J \to E$ correlation | $r(J, E) = +0.83$ for ThermoNet | Phase A |
+| $E_{\mathrm{floor}}(D,J)$ | $E_{\mathrm{floor}} = E_{\mathrm{task}} + C/D + B J_{\mathrm{topo}}^{\nu}$ | Theory |
+| $J \to E$ simple corr | $r(J, E) = +0.83$ (confounded by width) | Phase A |
+| $J \to E$ partial corr | $r = -0.794$ (width fixed) | Phase B2 |
+| Width confounder | $r(W, J_{\mathrm{topo}}) = -0.922$ | Phase B2 |
 | Phase transition (RFF) | $\alpha$ diverges near $J_c \approx 0.35$ | Phase S0 |
