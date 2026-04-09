@@ -121,11 +121,11 @@ def compute_J_topo(
     named_modules = list(model.named_modules())
     
     for i, (name, module) in enumerate(named_modules):
-        # Check if should be excluded
+        # Check if should be excluded (norm/pool/fc layers — don't reset D_eff chain)
         if any(re.search(p, name.lower()) for p in skip_exclude_patterns):
             eta_list.append(1.0)
-            prev_D_eff = None  # Reset after excluded layer
-            prev_c_out = None
+            # prev_D_eff and prev_c_out PERSIST across excluded layers
+            # so the conv layer chain is not broken by norm/pool/fc
             continue
         
         # Get weight
