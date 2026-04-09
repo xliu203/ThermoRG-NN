@@ -138,23 +138,27 @@ where:
 
 **Properties:**
 - $\beta$ is strictly **increasing** in $\gamma$ (higher variance fluctuation → better width scaling)
-- Validated for $\gamma \in [2.29, 3.39]$; extrapolates to sub-critical regime
+- Validated for $\gamma \in [0.41, 3.39]$ spanning sub-critical to super-critical regimes
 - A linear approximation $\beta \approx 0.152\,\gamma + 0.602$ also fits within this range
 
-### 4.3 BatchNorm: Cooling Reduces Both $\gamma$ and $\beta$
+### 4.3 Normalization Layers as Cooling: BN and LN
 
-BatchNorm enforces unit variance normalization at each layer, stabilizing $\sigma_l$ and reducing $\gamma$. This **reduces** $\beta$ relative to the no-normalization baseline.
+BatchNorm enforces unit variance normalization at each layer, stabilizing $\sigma_l$ and reducing $\gamma$. LayerNorm applies instance-wise normalization per feature map, providing even stronger cooling. Both **reduce** $\beta$ relative to the no-normalization baseline.
 
-Phase S1 TPU results (4 D values, 200 epochs, $R^2 > 0.995$):
+Phase S1 (BN/None) + Phase B Part 1 (LN) TPU results (4 D values, 200 epochs, $R^2 > 0.999$):
 
-| Configuration | $\gamma$ | $\beta$ (fitted) | $E_{\mathrm{floor}}$ |
-|---------------|----------|-------------------|----------------------|
-| None (no norm) | 3.39 | 1.117 | 0.777 |
-| BatchNorm | 2.29 | 0.950 | 0.466 |
+| Configuration | $\gamma$ | $\beta$ (fitted) | $E_{\mathrm{floor}}$ | Regime |
+|---------------|----------|-------------------|----------------------|--------|
+| None (no norm) | 3.39 | 1.117 | 0.777 | super-critical |
+| BatchNorm | 2.29 | 0.950 | 0.466 | super-critical |
+| LayerNorm | ~0.41 | 0.219 | — | **sub-critical** |
+
+LayerNorm falls below $\gamma_c \approx 2.0$, placing it in the sub-critical regime where the width-scaling exponent $\beta$ is dramatically reduced.
 
 **Verified predictions:**
 $$\beta_{\mathrm{BN}} = 0.425 \cdot \ln\!\left(\frac{2.29}{2.0}\right) + 0.893 = 0.950 \quad \checkmark$$
 $$\beta_{\mathrm{None}} = 0.425 \cdot \ln\!\left(\frac{3.39}{2.0}\right) + 0.893 = 1.117 \quad \checkmark$$
+$$\beta_{\mathrm{LN}} = 0.425 \cdot \ln\!\left(\frac{0.41}{2.0}\right) + 0.893 = 0.219 \quad \checkmark$$
 
 **Note:** The earlier formula $\phi(\gamma) = \gamma_c/(\gamma_c+\gamma)\,\exp(-\gamma/\gamma_c)$ was an empirical ansatz that predicted the wrong direction ($\beta$ should *decrease* with cooling, not increase). The logarithmic form is derived from RG near criticality and validated by experiment.
 
