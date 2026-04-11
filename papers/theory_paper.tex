@@ -62,7 +62,7 @@
 \maketitle
 
 \begin{abstract}
-We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, explaining why $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$; (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$; and (3) the critical point $J_c \approx 0.35$ where the scaling prefactor $\alpha$ diverges over three orders of magnitude, confirming a discontinuous phase transition. The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
+We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, explaining why $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$; and (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$. As secondary validation, we identify a critical point $J_c \approx 0.35$ in synthetic RFF networks where $\alpha$ diverges, though this is not observed in real architectures with skip connections. The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
 \end{abstract}
 
 % ==============================================================================
@@ -91,7 +91,6 @@ just as the ideal gas law $PV = NRT$ is the equation of state for gases. The par
     \begin{itemize}
     \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ explains $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near $\gamma_c \approx 2.0$
-    \item Critical point: $J_c \approx 0.35$ where $\alpha$ diverges over three orders of magnitude
     \end{itemize}
 
 \item \textbf{Physical Interpretation.} Each parameter in the equation of state maps to a physical observable: $\alpha$ to initial complexity penalty, $\beta$ to learning efficiency, $E_{\mathrm{floor}}$ to asymptotic irreducible error.
@@ -415,6 +414,8 @@ When $J_{\mathrm{topo}}$ is small, the network has \emph{bottlenecks} --- layers
 
 The critical point $J_c \approx 0.35$ marks the \emph{percolation threshold} where global information flow emerges. Below $J_c$, the network is in the \emph{localized phase}; above $J_c$, it enters the \emph{delocalized phase}.
 
+\medskip\noindent\textbf{Note on Real Architectures:} In synthetic RFF networks, we observe alpha divergence near $J_c \approx 0.35$. However, this critical behavior is not observed in real architectures (ThermoNet, ResNet, VGG) with skip connections and normalization. Skip connections keep $J_{\mathrm{topo}}$ safely above $J_c$, explaining their robust scaling behavior. We include this as theoretical validation of the framework's predictive power.
+
 \medskip\noindent\textbf{Power-Law Scaling and the divergence of $\alpha$:} In RFF networks, the loss scaling law is $L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}$. The prefactor $\alpha$ measures the \emph{initial complexity penalty}. Near the percolation critical point, fluctuations dominate and $\alpha$ follows a power-law divergence:
 \begin{equation}
 \alpha = \frac{C}{|J_{\mathrm{topo}} - J_c|^{\nu}},
@@ -521,7 +522,7 @@ The ThermoRG framework provides a complete physical picture of neural architectu
 
 \item \textbf{$\gamma_c \approx 2.0$ as critical point:} The EOS condition marks a dynamical phase transition between stable and unstable training regimes.
 
-\item \textbf{$\alpha$ divergence at $J_c \approx 0.35$:} A topological phase transition in the architecture's information flow geometry, analogous to the liquid-gas critical point.
+\item \textbf{$\alpha$ divergence at $J_c \approx 0.35$ (secondary):} A topological phase transition in synthetic RFF networks' information flow geometry, analogous to the liquid-gas critical point. This is not observed in real architectures with skip connections.
 \end{itemize}
 
 \subsection{Comparison to Ideal Gas Theory}
@@ -533,7 +534,7 @@ The analogy to the ideal gas law is precise in several respects:
 
 \item Deviations from the basic form are systematic: normalization layers act as ``cooling'' that reduces $\beta$ (analogous to attract/repel interactions modifying $PV = NRT$).
 
-\item The critical points ($\gamma_c$, $J_c$) are universal constants, not fitted per-system.
+\item The critical point $\gamma_c \approx 2.0$ is a universal constant (EOS dynamics); $J_c \approx 0.35$ is a theoretical prediction validated in RFF networks but not observed in architectures with skip connections.
 
 \item The constants requiring calibration ($B$, $C$, $d_{\mathrm{manifold}}$) are properties of the environment (dataset), analogous to species-specific van der Waals constants.
 \end{enumerate}
@@ -552,8 +553,8 @@ We presented ThermoRG, a thermodynamic theory that derives the neural D-scaling 
     \begin{itemize}
     \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ validated exactly across depths
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ validated across three orders of magnitude
-    \item Critical point: $J_c \approx 0.35$ where $\alpha$ diverges over three orders of magnitude
     \end{itemize}
+    As secondary validation, we identified $J_c \approx 0.35$ as a percolation critical point in synthetic RFF networks, though real architectures with skip connections do not exhibit this divergence.
 
 \item \textbf{Limitations:} The physical laws provide the universal form (skeleton), but the constants $B$, $C$, $d_{\mathrm{manifold}}$ must be calibrated for each dataset (flesh). This sets up the Applied Paper on ThermoRG-AL.
 \end{enumerate}
