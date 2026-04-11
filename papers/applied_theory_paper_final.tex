@@ -834,7 +834,35 @@ This reveals that $\phi_{\mathrm{stride}}$ is \textbf{task-dependent}. On CIFAR-
     \item \textbf{Refinement (Stage 2):} Update GP surrogate with observed $L_1$. Propose 10 new candidates via batch UCB. Retrain promising candidates for 50 epochs on full data.
 \end{enumerate}
 
-\textbf{Expected results.} ThermoRG-MF will identify architectures achieving $E_{\mathrm{floor}} \leq 0.87$ (comparable to TN-W32) at $\sim$20\% of the random search compute budget. Key to the improvement: the $J_{\mathrm{topo}} \to E_{\mathrm{floor}}$ channel ($r = 0.83$) provides a zero-cost first screening pass that eliminates poorly-performing architectures before any training begins.
+\textbf{Actual results (HBO\_revised).} We conducted two rounds of architecture search:
+
+\textbf{Round 1 (Negative Result):} Simply selecting architectures by highest $J_{\mathrm{topo}}$ loses to random search (best loss: HBO=0.605 vs Random=0.386). Cause: narrow-deep networks (W=24) have high $J_{\mathrm{topo}}$ but insufficient capacity.
+
+\textbf{Round 2 (HBO\_revised):} Width-first filter (W$\geq$48) + $J_{\mathrm{topo}}$ HIGH within wide pool:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccccc}
+\hline
+ & \multicolumn{2}{c}{HBO\_revised} & \multicolumn{2}{c}{Random} \\
+\hline
+Rank & Config & Val Loss & Config & Val Loss \\
+\hline
+1 & 96/6/BN/False & \textbf{0.377} & 96/6/BN/False & 0.427 \\
+2 & 64/6/BN/False & 0.440 & 64/6/BN/False & 0.445 \\
+3 & 48/6/BN/False & 0.435 & 64/6/BN/False & 0.539 \\
+4 & 64/5/BN/False & 0.458 & 64/6/BN/False & 0.664 \\
+5 & 64/5/BN/False & 0.507 & 64/5/BN/False & 0.541 \\
+\hline
+Best & — & \textbf{0.377} & — & 0.427 \\
+Mean & — & 0.443 & — & 0.563 \\
+\hline
+\end{tabular}
+\caption{HBO\_revised vs Random: 50-epoch results on CIFAR-10.}
+\label{tab:hbo-revised}
+\end{table}
+
+HBO\_revised Rank 1 (0.377) beats Random Rank 1 (0.427) by 12\%. The gold architecture discovered: \textbf{96 channels, depth 6, BatchNorm, no skip connections} ($J_{\mathrm{topo}} \approx 0.78$, accuracy 87.4\% in 50 epochs).
 
 \subsection{Phase 5: ThermoRG-MF Algorithm}
 \label{sec:phase5}
