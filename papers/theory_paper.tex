@@ -229,6 +229,8 @@ $E_{\mathrm{floor}}$ & Asymptotic irreducible error as $D \to \infty$ & Zero-poi
 
 This equation is the neural network's equation of state, relating loss to architecture size through state variables analogous to pressure, volume, and temperature in thermodynamics.
 
+\medskip\noindent\textbf{Width as Empirical Scaling Dimension:} Width $D$ serves as the dominant scaling dimension for standard architectures. The functional form $L \propto D^{-\beta}$ is universal; however, the mapping from architectural parameters (channels, $d_{\mathrm{model}}$) to $D$ may vary by architecture family. For ConvNets, $D \propto C \cdot H \cdot W$; for Transformers, $D \propto d_{\mathrm{model}} \cdot n_{\mathrm{layers}}$. The thermodynamic form holds across families, but the specific calibration of $\alpha$ and $\beta$ requires fitting within each family.
+
 \subsection{Validation of the Equation of State}
 
 Fitted on CIFAR-10 (200 epochs, TPU):
@@ -500,6 +502,15 @@ $d_{\mathrm{manifold}}$ & Data manifold dimension & \textbf{Yes} (dataset-depend
 
 The constants $B$ and $C$ in $E_{\mathrm{floor}} = C/D + B \cdot J_{\mathrm{topo}}^{\nu}$ cannot be derived from first principles alone---they depend on the specific data manifold geometry and loss landscape structure. This is analogous to how the van der Waals constants $a$ and $b$ in $P = R T/(V-b) - a/V^2$ must be measured empirically for each gas.
 
+\medskip\noindent\textbf{The Pareto Trade-Off in $J_{\mathrm{topo}}$:}
+
+Higher $J_{\mathrm{topo}}$ has \emph{opposite} effects on the two terms of the scaling law:
+\begin{itemize}
+\item \textbf{In the scaling exponent:} Higher $J_{\mathrm{topo}}$ raises $\beta$ (via reduced $\gamma$), leading to \emph{faster learning} and steeper power-law decay.
+\item \textbf{In the asymptotic error:} Higher $J_{\mathrm{topo}}$ raises $E_{\mathrm{floor}}$ (via $B \cdot J_{\mathrm{topo}}^{\nu}$), leading to \emph{worse final performance}.
+\end{itemize}
+This is \emph{not} a contradiction but a \emph{fundamental Pareto trade-off}. The optimal architecture does not maximize or minimize $J_{\mathrm{topo}}$; it finds the Pareto-optimal balance between these competing effects. Within width groups, the net effect is still beneficial (partial correlation $r = -0.794$), but across architectures with different widths, naive $J_{\mathrm{topo}}$ maximization fails---the width confound overwhelms the within-group benefit (simple correlation $r = +0.588$). This is why the two-stage approach (width-first, then $J_{\mathrm{topo}}$ within) succeeds while naive HBO fails.
+
 \subsection{The Dataset as ``Thermodynamic Environment''}
 
 Just as a gas's equation of state depends on the gas species (through $a$ and $b$), a neural network's scaling law depends on the dataset (through $d_{\mathrm{manifold}}$ and the $E_{\mathrm{floor}}$ coefficients). The theoretical framework provides the universal form; the specific constants require ``thermodynamic contact'' with the dataset---i.e., a small number of calibration experiments.
@@ -517,6 +528,8 @@ The ThermoRG framework provides a complete physical picture of neural architectu
 
 \begin{itemize}
 \item \textbf{$J_{\mathrm{topo}}$ as order parameter:} $J_{\mathrm{topo}} \to 1$ indicates uniform information flow (ordered phase); $J_{\mathrm{topo}} \to 0$ indicates bottlenecks (disordered phase).
+
+\item \textbf{$J_{\mathrm{topo}}$ as Pareto trade-off:} Higher $J_{\mathrm{topo}}$ improves learning speed (higher $\beta$) but worsens asymptotic error (higher $E_{\mathrm{floor}}$). The design goal is \emph{not} to maximize $J_{\mathrm{topo}}$ but to find the Pareto-optimal $J_{\mathrm{topo}}$ that balances these competing effects. Within width groups, the net effect is beneficial (partial correlation $r = -0.794$); across architectures, the width confound requires a two-stage optimization approach.
 
 \item \textbf{$\gamma$ as temperature:} Variance fluctuation during training is analogous to temperature in thermodynamics. High $\gamma$ (hot) enables aggressive width scaling but with training instability; low $\gamma$ (cold) provides stable training but slower scaling.
 
@@ -555,6 +568,8 @@ We presented ThermoRG, a thermodynamic theory that derives the neural D-scaling 
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ validated across three orders of magnitude
     \end{itemize}
     As secondary validation, we identified $J_c \approx 0.35$ as a percolation critical point in synthetic RFF networks, though real architectures with skip connections do not exhibit this divergence.
+
+\item \textbf{$J_{\mathrm{topo}}$ as Pareto Trade-Off:} Higher $J_{\mathrm{topo}}$ has opposite effects on the two terms of the scaling law: it raises $\beta$ (faster learning) but also raises $E_{\mathrm{floor}}$ (worse asymptotic error). The design goal is \emph{not} to maximize $J_{\mathrm{topo}}$ but to find the Pareto-optimal value that balances learning speed versus asymptotic accuracy. Within width groups, the net effect is beneficial (partial correlation $r = -0.794$).
 
 \item \textbf{Limitations:} The physical laws provide the universal form (skeleton), but the constants $B$, $C$, $d_{\mathrm{manifold}}$ must be calibrated for each dataset (flesh). This sets up the Applied Paper on ThermoRG-AL.
 \end{enumerate}

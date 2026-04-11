@@ -304,6 +304,7 @@ The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip co
 \STATE \textbf{\% Stage 2: $J_{\mathrm{topo}}$ Within Width Groups}
 \STATE Sort filtered candidates by $E_{\mathrm{prior}}$ (lower is better)
 \STATE Select top-$K = 30$ candidates
+\STATE \emph{Note:} The optimal $J_{\mathrm{topo}}$ is the Pareto-optimal value, not the maximum. The trade-off between $\beta$ (learning speed) and $E_{\mathrm{floor}}$ (asymptotic error) means intermediate $J_{\mathrm{topo}}$ may outperform the maximum.
 \FOR{each selected candidate $\mathcal{A}$}
     \STATE Train $\mathcal{A}$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A})$
 \ENDFOR
@@ -321,15 +322,17 @@ The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip co
 
 \subsection{Design Rationale}
 
-The two-stage structure exploits the complementary strengths of width and $J_{\mathrm{topo}}$:
+The two-stage structure respects the \emph{Pareto trade-off} inherent in $J_{\mathrm{topo}}$: higher $J_{\mathrm{topo}}$ raises $\beta$ (faster learning) but also raises $E_{\mathrm{floor}}$ (worse asymptotic error). The optimal $J_{\mathrm{topo}}$ is not the maximum possible but the Pareto-optimal value.
+
+The two-stage approach exploits the complementary strengths of width and $J_{\mathrm{topo}}$:
 
 \begin{enumerate}
 \item \textbf{Width (Capacity):} $E_{\mathrm{floor}} \approx C/D$ dominates across architectures. Wide networks have lower asymptotic error because they have more capacity.
 
-\item \textbf{$J_{\mathrm{topo}}$ (Optimization):} Within width groups, $J_{\mathrm{topo}}$ controls optimization difficulty. Higher $J_{\mathrm{topo}}$ means more uniform information flow and easier training.
+\item \textbf{$J_{\mathrm{topo}}$ (Optimization):} Within width groups, $J_{\mathrm{topo}}$ optimizes the speed-accuracy balance. Higher $J_{\mathrm{topo}}$ means more uniform information flow and easier training (higher $\beta$), but this benefit is constrained within the capacity set by width.
 \end{enumerate}
 
-The two channels are statistically independent within groups (partial correlation $r = -0.794$, $p = 0.006$), so optimizing both is additive.
+Width dominates capacity; $J_{\mathrm{topo}}$ optimizes the speed-accuracy trade-off within width constraints. The two channels are statistically independent within groups (partial correlation $r = -0.794$, $p = 0.006$), so optimizing both is additive.
 
 % ==============================================================================
 % 6. ZERO-COST PROPERTY
