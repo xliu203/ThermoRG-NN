@@ -164,7 +164,7 @@ Phenomenological theory with strong empirical grounding.
 
 ## Pending Items Before Submission
 
-1. ⏳ **Round 2 results** (HBO_revised) — expected to validate screener design
+1. ✅ **Round 2 results** (HBO_revised) — HBO WON (0.703 vs 0.781)
 2. [ ] **Figure generation scripts** — all figures from data
 3. [ ] **Figure captions** — detailed, self-contained
 4. [ ] **Related work** — positioning against Chinchilla, NAS literature
@@ -174,9 +174,23 @@ Phenomenological theory with strong empirical grounding.
 
 ## Next Steps
 
-1. Leo runs HBO_revised on Kaggle (next week)
+1. ✅ HBO_revised ran and WON
 2. Generate all figures from existing data
-3. Write first draft of theory section
+3. Write first draft of theory section (DONE: paper_draft_v1.tex)
 4. Write results section (can parallelize)
 
-*Last updated: 2026-04-09*
+## Critical Fix (2026-04-11)
+
+**J_topo definition was inconsistent between Phase A and code:**
+- Phase A used: J_topo = ln(η_product) (unbounded, ~23 for DenseNet)
+- Code uses: J_topo = exp(-mean|log η_l|) (bounded in (0,1])
+
+**Fixed all values to code definition:**
+- ResNet-18: 4.16 → 0.678
+- VGG-11: 2.08 → 0.399
+- DenseNet-40: 23.03 → 0.888
+- ThermoNet family: all recomputed
+
+**Ordering now makes sense:** DenseNet (0.888) > ResNet (0.678) > ThermoNet-6 (0.51-0.60) > VGG (0.40)
+
+*Last updated: 2026-04-11*
