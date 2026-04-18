@@ -291,7 +291,7 @@ where $\mu_D = \mathbb{E}[\mathrm{GELU}'(z)] \approx 0.5$ (mean derivative over 
 \begin{equation}
 \boxed{\Lambda_{\max}(J) \;\propto\; D^{0.52}}.
 \end{equation}
-Note: the original hypothesis that this implies a $D^{0.26}$ saturation regime was disproven by Gap 2, which established that standard RMT at initialization gives $\lambda_{\max} \propto D^{0.48}$, not $D^{0.26}$. The physical origin of the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ may lie in standard RMT eigenvalue concentration combined with finite-width corrections (see Discussion).
+Note: this empirically observed $D^{0.26}$ scaling should \emph{not} be interpreted as evidence for a GELU saturation regime. Gap 2 established that standard RMT at initialization predicts $\lambda_{\max} \propto D^{0.48}$, and Gap 2b showed that SGD training from standard initialization cannot reach the deep saturation needed for $D^{0.26}$ (EoS collapse occurs within epoch 1). The physical mechanism behind the observed $\lambda_{\max} \propto D^{0.26}$ and the resulting $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ remains an open question; standard RMT eigenvalue concentration combined with finite-width corrections is the more plausible working hypothesis.
 
 \medskip\noindent\textbf{Step 4: Effective dimension scaling.} Combining with $\|W\|_F^2 \propto D$:
 \begin{equation}
@@ -379,13 +379,13 @@ Connecting to Singular Learning Theory, the scaling exponent satisfies $\alpha \
 
 Empirically, $R^2 = 0.9999$ for $\alpha \propto |\log(\prod\eta_l)|$ with $k_\alpha \approx 0.20$ (universal constant).
 
-\subsection{Step 2: GELU Width Decay ($\alpha_{\mathrm{GELU}} \approx 0.45$)}
+\subsection{Step 2: Width Decay Exponent ($\alpha_{\mathrm{GELU}} \approx 0.45$)}
 
-We derive the width decay exponent $\alpha_{\mathrm{GELU}}$ from first principles using Random Matrix Theory (RMT) and the saturation property of the GELU activation.
+We identify the width decay exponent $\alpha_{\mathrm{GELU}}$ empirically and discuss its theoretical origin. The empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ with $\alpha_{\mathrm{GELU}} \approx 0.45$ was measured \emph{directly} across ThermoNet families and remains valid regardless of the underlying mechanism. The physical origin of this exponent is an open question (see Discussion).
 
-\medskip\noindent\textbf{Physical Picture:} For a linear Conv2d layer with He-initialization $W_{ij} \sim \mathcal{N}(0, 2/n)$, standard RMT predicts $\lambda_{\max}(W) \sim \sqrt{n}$ and $\|W\|_F^2 \sim n$, giving $D_{\mathrm{eff}} = \|W\|_F^2 / \lambda_{\max}^2 \sim \mathcal{O}(1)$ --- independent of width $D$. Such layers would contribute $\eta_l \approx 1$ to $J_{\mathrm{topo}}$, contradicting the observed width dependence.
+\medskip\noindent\textbf{Empirical measurement:} For a linear Conv2d layer with He-initialization $W_{ij} \sim \mathcal{N}(0, 2/n)$, standard RMT predicts $\lambda_{\max}(W) \sim \sqrt{n}$ and $\|W\|_F^2 \sim n$, giving $D_{\mathrm{eff}} = \|W\|_F^2 / \lambda_{\max}^2 \sim \mathcal{O}(1)$ --- independent of width $D$. Such layers would contribute $\eta_l \approx 1$ to $J_{\mathrm{topo}}$, contradicting the observed width dependence.
 
-\textbf{The critical correction arises from the GELU nonlinearity.} The GELU activation:
+\textbf{The observed correction to this RMT prediction requires investigation of the GELU nonlinearity, whose saturation behavior may contribute but whose precise role remains to be established.} The GELU activation:
 \begin{equation}
 \mathrm{GELU}(x) = x \cdot \Phi(x) = \frac{x}{2}\left[1 + \mathrm{erf}\left(\frac{x}{\sqrt{2}}\right)\right],
 \end{equation}
@@ -396,9 +396,9 @@ behaves differently from ReLU for large $|x|$:
 x - \frac{1}{\sqrt{2\pi}|x|} e^{-x^2/2} & x \to +\infty
 \end{cases}
 \end{equation}
-\textbf{Key property:} GELU saturates to a \emph{constant} (decaying exponentially) for large negative inputs and to \emph{linear} (with slope $1$) for large positive inputs, but with a \emph{smaller effective gain} than the identity.
+\textbf{Key property of GELU:} GELU saturates to a \emph{constant} (decaying exponentially) for large negative inputs and to \emph{linear} (with slope $1$) for large positive inputs, but with a \emph{smaller effective gain} than the identity. Whether this saturation property is the primary driver of the observed $D^{0.26}$ scaling remains an open question (see Discussion).
 
-\medskip\noindent\textbf{RMT Analysis:} Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The effective linearization of GELU for signal propagation was analyzed by \citet{danilov2020noise}. The key result is that GELU acts as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$.
+\medskip\noindent\textbf{RMT Analysis:} Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The effective linearization of GELU for signal propagation was analyzed by \citet{danilov2020noise}. The key observation is that GELU acts as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$. Whether this is the dominant contributor to the sublinear $\lambda_{\max} \propto D^{0.52}$ observation (or whether structured random matrix effects dominate) is an open question.
 
 For the spectral norm of the effective Jacobian $J_{\mathrm{eff}} = \mathrm{diag}(\sigma_{\mathrm{out}}) \cdot W \cdot \mathrm{diag}(\sigma_{\mathrm{in}})^{-1}$:
 \begin{equation}
@@ -406,11 +406,11 @@ For the spectral norm of the effective Jacobian $J_{\mathrm{eff}} = \mathrm{diag
 \end{equation}
 where $g_{\mathrm{eff}}(D)$ is the effective local gain. Empirically (5-seed averaged, $D \in [16, 96]$):
 \begin{equation}
-\lambda_{\max}(W_{\mathrm{eff}}) \propto D^{0.52},
+\lambda_{\max}(W_{\mathrm{eff}}) \;\propto\; D^{0.52},
 \end{equation}
-which is \emph{sublinear} compared to the linear expectation $\propto D^{1/2}$ for random matrices.
+which is \emph{sublinear} compared to the linear expectation $\propto D^{1/2}$ for random matrices. This sublinearity is empirically observed but its \emph{primary driver} (GELU saturation vs. structured RMT effects) is an open question.
 
-\medskip\noindent\textbf{Derivation of $\alpha_{\mathrm{GELU}}$:} Given $\lambda_{\max} \propto D^{0.52}$ and $\|W\|_F^2 \propto D$, the effective dimension is:
+\medskip\noindent\textbf{Derivation of $\alpha_{\mathrm{GELU}}$ (empirical):} Given $\lambda_{\max} \propto D^{0.52}$ and $\|W\|_F^2 \propto D$, the effective dimension is:
 \begin{equation}
 D_{\mathrm{eff}} = \frac{\|W\|_F^2}{\lambda_{\max}^2} \propto \frac{D}{D^{2 \times 0.52}} = D^{0.48 \times \gamma_{\mathrm{token}}}.
 \end{equation}
@@ -418,6 +418,7 @@ The token-mixing correction factor $\gamma_{\mathrm{token}} \approx 0.94$ arises
 \begin{equation}
 \boxed{\alpha_{\mathrm{GELU}} = 1 - 0.52 \approx 0.48 \xrightarrow{\gamma_{\mathrm{token}}} 0.45}
 \end{equation}
+\medskip\noindent\textbf{Open question:} The derivation above treats $\lambda_{\max} \propto D^{0.52}$ as empirically given. Whether this exponent arises from GELU saturation (original hypothesis), from standard RMT eigenvalue concentration at finite width, or from some other mechanism, remains to be established. Gap 2 established that standard RMT predicts $\lambda_{\max} \propto D^{0.48}$ at initialization, suggesting that the observed $D^{0.26}$ is not a saturation effect but may instead reflect finite-width corrections to RMT eigenvalue growth. Crucially, regardless of the mechanism, the empirical law $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ with $\alpha_{\mathrm{GELU}} \approx 0.45$ is well-established and experimentally validated.
 
 The per-layer expansion ratio for the input layer ($l=1$) is:
 \begin{equation}
