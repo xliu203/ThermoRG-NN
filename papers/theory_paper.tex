@@ -293,14 +293,7 @@ where $\mu_D = \mathbb{E}[\mathrm{GELU}'(z)] \approx 0.5$ (mean derivative over 
 \end{equation}
 Note: this empirically observed $D^{0.26}$ scaling should \emph{not} be interpreted as evidence for a GELU saturation regime. Gap 2 established that standard RMT at initialization predicts $\lambda_{\max} \propto D^{0.48}$, and Gap 2b showed that SGD training from standard initialization cannot reach the $D^{0.26}$ regime---within one training step, $\lambda_{\max}$ diverges sharply toward $+\infty$ (numerical overflow at $D \geq 256$), indicating a sharp spectral explosion rather than saturation. The physical mechanism behind the observed $\lambda_{\max} \propto D^{0.26}$ and the resulting $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ remains an open question; standard RMT eigenvalue concentration combined with finite-width corrections is the more plausible working hypothesis.
 
-\medskip\noindent\textbf{Step 4: Effective dimension scaling.} Combining with $\|W\|_F^2 \propto D$:
-\begin{equation}
-D_{\mathrm{eff}}(W) \;=\; \frac{\|W\|_F^2}{\lambda_{\max}(W)^2}
-\;\propto\; \frac{D}{D^{2 \times 0.26}}
-\;=\; D^{0.48}
-\;\approx\; D^{0.45},
-\end{equation}
-where the $0.45$ exponent includes the token-mixing correction factor $\gamma_{\mathrm{token}} \approx 0.94$. This sub-linear growth confirms that width controls the effective dimensionality of the representation space: $D_{\mathrm{eff}}$ grows as a power of $D$, not as $D^1$ (linear) or $D^0$ (constant).
+\medskip\noindent\textbf{Step 4: Effective dimension scaling.} Gap 2 measures $D_{\mathrm{eff}}(D) \propto D^{0.93}$, a near-linear scaling that is not predicted by standard RMT. The analysis is complicated by the use of $\sigma=1.0$ weight initialization (not Kaiming normalization) in our experiments: under this initialization, $\|W\|_F^2 \propto D^2$ and standard RMT predicts $\lambda_{\max} \propto D$, giving $D_{\mathrm{eff}} \propto D^0$. The observed $D^{0.93}$ scaling arises from GELU saturation effects suppressing both $\lambda_{\max}$ (from $D^1$ to $D^{0.48}$) and $\|W\|_F^2$ (from $D^2$ to $D^{1.89}$) simultaneously. The precise exponents depend on the interaction between GELU nonlinearity and initialization scheme; a first-principles derivation remains an open problem. The empirically observed $D_{\mathrm{eff}} \propto D^{0.93}$ is used in subsequent analysis regardless of theoretical derivation.
 
 \subsection{Universal Effective Scale $S_{\mathrm{eff}}$}
 
@@ -418,7 +411,7 @@ The token-mixing correction factor $\gamma_{\mathrm{token}} \approx 0.94$ arises
 \begin{equation}
 \boxed{\alpha_{\mathrm{GELU}} = 1 - 0.52 \approx 0.48 \xrightarrow{\gamma_{\mathrm{token}}} 0.45}
 \end{equation}
-\medskip\noindent\textbf{Open question:} The derivation above treats $\lambda_{\max} \propto D^{0.52}$ as empirically given. Whether this exponent arises from GELU saturation (original hypothesis), from standard RMT eigenvalue concentration at finite width, or from some other mechanism, remains to be established. Gap 2 established that standard RMT predicts $\lambda_{\max} \propto D^{0.48}$ at initialization, suggesting that the observed $D^{0.26}$ is not a saturation effect but may instead reflect finite-width corrections to RMT eigenvalue growth. Crucially, regardless of the mechanism, the empirical law $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ with $\alpha_{\mathrm{GELU}} \approx 0.45$ is well-established and experimentally validated.
+\medskip\noindent\textbf{Open question:} Gap 2 establishes that at $\sigma=1.0$ initialization (not Kaiming), $\lambda_{\max} \propto D^{0.48}$ and $D_{\mathrm{eff}} \propto D^{0.93}$. The near-linear $D_{\mathrm{eff}}$ scaling arises from GELU saturation suppressing both $\lambda_{\max}$ (factor $D^{-0.52}$) and \$\|W\|_F^2$ (factor $D^{-0.11}$) relative to their unnormalized values. A clean first-principles derivation of the $D^{0.93}$ exponent from these combined effects has not yet been achieved. Regardless of mechanism, the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ with $\alpha_{\mathrm{GELU}} \approx 0.45$ is directly measured and remains valid.
 
 The per-layer expansion ratio for the input layer ($l=1$) is:
 \begin{equation}
@@ -521,7 +514,7 @@ When $J_{\mathrm{topo}}$ is small, the network has \emph{bottlenecks} --- layers
 
 The critical point $J_c \approx 0.35$ marks the \emph{percolation threshold} where global information flow emerges. Below $J_c$, the network is in the \emph{localized phase}; above $J_c$, it enters the \emph{delocalized phase}.
 
-\medskip\noindent\textbf{Note on Real Architectures:} In synthetic RFF networks, we observe alpha divergence near $J_c \approx 0.35$. However, this critical behavior is not observed in real architectures (ThermoNet, ResNet, VGG) with skip connections and normalization. Skip connections keep $J_{\mathrm{topo}}$ safely above $J_c$, explaining their robust scaling behavior. We include this as theoretical validation of the framework's predictive power.
+\medskip\noindent\textbf{Note on Real Architectures and Future Work:} In synthetic RFF networks, we observe alpha divergence near $J_c \approx 0.35$. However, this critical behavior is not observed in real architectures (ThermoNet, ResNet, VGG) with skip connections and normalization. Skip connections keep $J_{\mathrm{topo}}$ safely above $J_c$, explaining their robust scaling behavior. We present this as a theoretical prediction requiring future empirical validation in real architectures; it should not be treated as an established empirical result.
 
 \medskip\noindent\textbf{Power-Law Scaling and the divergence of $\alpha$:} In RFF networks, the loss scaling law is $L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}$. The prefactor $\alpha$ measures the \emph{initial complexity penalty}. Near the percolation critical point, fluctuations dominate and $\alpha$ follows a power-law divergence:
 \begin{equation}
@@ -583,6 +576,16 @@ The D-scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is obtained by
 % 7. LIMITATIONS AND FUTURE WORK
 % ==============================================================================
 \section{Limitations and the Path to Application}
+
+\subsection{Open Problems}
+
+\begin{itemize}
+\item \textbf{$D_{\mathrm{eff}}$ width scaling:} Gap 2 measures $D_{\mathrm{eff}} \propto D^{0.93}$, a near-linear scaling that cannot be predicted from standard RMT. A complete first-principles derivation requires simultaneously accounting for $\sigma=1.0$ initialization and GELU saturation effects on both $\lambda_{\max}$ and \$\|W\|_F^2$. This is a prerequisite for a fully derived theory of the $\alpha_{\mathrm{GELU}} \approx 0.45$ exponent.
+
+\item \textbf{$J_c \approx 0.35$ in real architectures:} The critical point is validated in RFF networks but not observed in architectures with skip connections. Future work should test this prediction on real networks with controlled architecture variations.
+
+\item \textbf{Stride-2 as RG blocking:} The task-dependence of the blocking factor $\phi$ (suppressing on ImageNet, enhancing on CIFAR-10) requires further theoretical justification and validation across more datasets.
+\end{itemize}
 
 The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset).
 
@@ -685,7 +688,7 @@ We presented ThermoRG, a thermodynamic theory that derives the neural D-scaling 
 
 \item \textbf{RG Derivation:} We derived the complete scaling law including:
     \begin{itemize}
-    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ with empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ validated across depths; the physical origin of this scaling is an open question (see Discussion)
+    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ with empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ ($\alpha_{\mathrm{GELU}} \approx 0.45$) (mechanism is an open question)
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ validated across three orders of magnitude
     \end{itemize}
     As secondary validation, we identified $J_c \approx 0.35$ as a percolation critical point in synthetic RFF networks, though real architectures with skip connections do not exhibit this divergence.
