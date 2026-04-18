@@ -106,14 +106,20 @@ def power_iteration(W, n_iterations=20):
 
 
 def compute_layer_stats(model):
-    """Compute λ_max and D_eff for all Conv2d/Linear layers in model."""
+    """Compute λ_max and D_eff for all Conv2d/Linear layers in model.
+    
+    Handles Edge of Stability regime where λ_max may approach zero.
+    """
     layer_lm, layer_de = [], []
     for _, module in model.named_modules():
         if isinstance(module, (nn.Conv2d, nn.Linear)):
             W_flat = module.weight.data.reshape(module.weight.shape[0], -1)
             lambda_max = power_iteration(module.weight.data, n_iterations=20)
+            # Clamp λ_max to prevent numerical explosion in EoS regime
+            lambda_max = max(lambda_max, 1e-6)
             fro_sq = float((W_flat ** 2).sum().item())
-            D_eff = fro_sq / (lambda_max ** 2 + 1e-10)
+            # D_eff = frobenius_norm^2 / lambda_max^2, capped to avoid overflow
+            D_eff = min(fro_sq / (lambda_max ** 2), 1e6)
             layer_lm.append(lambda_max)
             layer_de.append(D_eff)
     return {
