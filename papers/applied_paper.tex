@@ -63,7 +63,7 @@
 \maketitle
 
 \begin{abstract}
-Traditional Neural Architecture Search (NAS) is like alchemy---extremely expensive and lacking interpretation. Training hundreds of architectures to find one good one wastes enormous compute. We present ThermoRG-AL, a thermodynamic theory that transforms architecture search from empirical alchemy into analytical calculation. The key principle is: \emph{fit the law, not the points}. Once the scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is calibrated with $\sim$1 GPU-hour, the entire search space is analytically illuminated. Optimal architecture can be calculated, not searched. We validate ThermoRG-AL across three experiments: (1) the cooling equation from Phase S1 ($\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$); (2) resolution of Simpson's paradox in Phase B2 (width and $J_{\mathrm{topo}}$ are independent channels); and (3) architecture search where ThermoRG-AL wins Random by 12\% (0.377 vs 0.427). After calibration, prediction is free---fundamentally different from NASWOT/Bayesian optimization which require repeated training evaluations.
+Traditional Neural Architecture Search (NAS) is computationally intensive and with limited theoretical foundation. Training hundreds of architectures to find one good one wastes enormous compute. We present ThermoRG-AL, a thermodynamic theory that provides a systematic framework for understanding neural architecture scaling. The key principle is: \emph{fit the law, not the points}. Once the scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is calibrated with $\sim$1 GPU-hour, the entire search space is analytically illuminated. The framework in principle allows optimal architecture to be calculated, not searched. We validate ThermoRG-AL across three experiments: (1) the cooling equation from Phase S1 ($\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$); (2) resolution of Simpson's paradox in Phase B2 (width and $J_{\mathrm{topo}}$ are independent channels); and (3) architecture search where ThermoRG-AL wins Random by 12\% (0.377 vs 0.427). After calibration, prediction is free---fundamentally different from NASWOT/Bayesian optimization which require repeated training evaluations.
 \end{abstract}
 
 % ==============================================================================
@@ -75,7 +75,7 @@ Neural Architecture Search (NAS) automates the design of neural network architec
 
 We ask: \emph{Can we use physical laws to eliminate the search entirely?}
 
-This paper presents ThermoRG-AL (Active Learning), which transforms architecture search from empirical alchemy into analytical calculation. The key insight is from our companion Theory Paper: the D-scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is the neural network's \emph{equation of state}. Once this law is calibrated with a small number of experiments, the entire search space is analytically illuminated. Optimal architecture can be \emph{calculated}, not searched.
+This paper presents ThermoRG-AL (Active Learning), which provides a systematic framework for understanding neural architecture scaling. The key insight is from our companion Theory Paper: the D-scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is the neural network's \emph{equation of state}. Once this law is calibrated with a small number of experiments, the entire search space is analytically illuminated. The framework in principle allows optimal architecture to be \emph{calculated}, not searched.
 
 \bigskip\noindent\textbf{Key Contributions:}
 
@@ -92,7 +92,7 @@ This paper presents ThermoRG-AL (Active Learning), which transforms architecture
 % ==============================================================================
 % 2. WHY NAS IS EXPENSIVE
 % ==============================================================================
-\section{Why NAS Is Expensive: The Alchemy Problem}
+\section{Why NAS Is Expensive: The Computational Cost Problem}
 
 \subsection{The Fundamental Cost of NAS}
 
@@ -400,9 +400,9 @@ For ImageNet-scale tasks:
 % ==============================================================================
 \section{Discussion}
 
-\subsection{From Alchemy to Physics}
+\subsection{From Empirical Search to Systematic Framework}
 
-ThermoRG-AL transforms architecture search from empirical alchemy into analytical calculation. The key is recognizing that the D-scaling law is an equation of state, not an arbitrary fit. Once this form is established by theory, calibration requires only a small number of experiments. The rest is calculation.
+ThermoRG-AL provides a systematic framework for understanding neural architecture scaling. The key is recognizing that the D-scaling law is an equation of state, not an arbitrary fit. Once this form is established by theory, calibration requires only a small number of experiments. The rest is calculation.
 
 This is analogous to how thermodynamics predicts gas behavior: you measure $R$ once (for all ideal gases), then the equation $PV = NRT$ predicts behavior for any gas. Similarly, we measure the scaling law constants once per dataset, then predict behavior for any architecture.
 
@@ -427,7 +427,7 @@ For researchers:
 % ==============================================================================
 \section{Conclusion}
 
-We presented ThermoRG-AL, a thermodynamic theory of neural architecture search that transforms architecture design from empirical alchemy into analytical calculation.
+We presented ThermoRG-AL, a thermodynamic theory of neural architecture search that provides a systematic framework for understanding neural architecture scaling.
 
 \begin{enumerate}
 \item \textbf{Fit the law, not the points:} Calibrate the equation of state $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ with $\sim$1 GPU-hour, then predict the entire search space analytically.
@@ -439,7 +439,7 @@ We presented ThermoRG-AL, a thermodynamic theory of neural architecture search t
 \item \textbf{Zero-cost property:} After calibration, prediction costs $\sim$1ms per architecture---fundamentally different from NASWOT and Bayesian optimization.
 \end{enumerate}
 
-The physical laws give us a perfect skeleton (form). ThermoRG-AL adds the flesh (calibrated constants) to calculate the optimal architecture analytically, not by searching.
+The physical laws provide an effective structural framework (form). ThermoRG-AL adds the flesh (calibrated constants) to calculate the optimal architecture analytically, not by searching.
 
 % ==============================================================================
 % APPENDIX
@@ -507,3 +507,4 @@ The following works inform the broader NAS context but are not directly cited in
 \end{itemize}
 
 \end{document}
+nt}

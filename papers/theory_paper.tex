@@ -62,7 +62,7 @@
 \maketitle
 
 \begin{abstract}
-We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, with the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ measured directly across ThermoNet families; and (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$. As secondary validation, we identify a critical point $J_c \approx 0.35$ in synthetic RFF networks where $\alpha$ diverges, though this is not observed in real architectures with skip connections. The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
+We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, with the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ measured directly across ThermoNet families; and (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$. As secondary validation, we identify a critical point $J_c \approx 0.35$ in synthetic RFF networks where $\alpha$ diverges, though this is not observed in real architectures with skip connections. The physical laws provide an effective structural framework (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
 \end{abstract}
 
 % ==============================================================================
@@ -95,7 +95,7 @@ just as the ideal gas law $PV = NRT$ is the equation of state for gases. The par
 
 \item \textbf{Physical Interpretation.} Each parameter in the equation of state maps to a physical observable: $\alpha$ to initial complexity penalty, $\beta$ to learning efficiency, $E_{\mathrm{floor}}$ to asymptotic irreducible error.
 
-\item \textbf{Limitations.} The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This sets up the companion Applied Paper on ThermoRG-AL.
+\item \textbf{Limitations.} The physical laws provide an effective structural framework (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This sets up the companion Applied Paper on ThermoRG-AL.
 \end{enumerate}
 
 % ==============================================================================
@@ -587,7 +587,7 @@ The D-scaling law $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ is obtained by
 \item \textbf{Stride-2 as RG blocking:} The task-dependence of the blocking factor $\phi$ (suppressing on ImageNet, enhancing on CIFAR-10) requires further theoretical justification and validation across more datasets.
 \end{itemize}
 
-The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset).
+The physical laws provide an effective structural framework (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset).
 
 \subsection{Constants That Require Empirical Calibration}
 
