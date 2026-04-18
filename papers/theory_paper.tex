@@ -291,7 +291,7 @@ where $\mu_D = \mathbb{E}[\mathrm{GELU}'(z)] \approx 0.5$ (mean derivative over 
 \begin{equation}
 \boxed{\Lambda_{\max}(J) \;\propto\; D^{0.52}}.
 \end{equation}
-Note: this empirically observed $D^{0.26}$ scaling should \emph{not} be interpreted as evidence for a GELU saturation regime. Gap 2 established that standard RMT at initialization predicts $\lambda_{\max} \propto D^{0.48}$, and Gap 2b showed that SGD training from standard initialization cannot reach the deep saturation needed for $D^{0.26}$ (EoS collapse occurs within epoch 1). The physical mechanism behind the observed $\lambda_{\max} \propto D^{0.26}$ and the resulting $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ remains an open question; standard RMT eigenvalue concentration combined with finite-width corrections is the more plausible working hypothesis.
+Note: this empirically observed $D^{0.26}$ scaling should \emph{not} be interpreted as evidence for a GELU saturation regime. Gap 2 established that standard RMT at initialization predicts $\lambda_{\max} \propto D^{0.48}$, and Gap 2b showed that SGD training from standard initialization cannot reach the $D^{0.26}$ regime---within one training step, $\lambda_{\max}$ diverges sharply toward $+\infty$ (numerical overflow at $D \geq 256$), indicating a sharp spectral explosion rather than saturation. The physical mechanism behind the observed $\lambda_{\max} \propto D^{0.26}$ and the resulting $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ remains an open question; standard RMT eigenvalue concentration combined with finite-width corrections is the more plausible working hypothesis.
 
 \medskip\noindent\textbf{Step 4: Effective dimension scaling.} Combining with $\|W\|_F^2 \propto D$:
 \begin{equation}
@@ -630,10 +630,7 @@ This limitation motivates the companion Applied Paper, which shows how to perfor
 
 Gap 2 established that standard RMT at initialization gives
 $\lambda_{\max} \propto D^{0.48}$, not the $D^{0.26}$ saturation
-regime originally hypothesized. Gap 2b further shows that standard
-SGD training from standard initialization cannot access this
-$D^{0.26}$ regime, with Edge of Stability (EoS) collapse occurring
-within the first training epoch.
+regime originally hypothesized. Gap 2b further shows that standard SGD training from standard initialization cannot access this $D^{0.26}$ regime---within one training step, $\lambda_{\max}$ diverges sharply toward $+\infty$ (numerical overflow at $D \geq 256$), so the network departs from the saturation-like regime entirely rather than converging to it.
 
 However, we emphasize that the empirical depth scaling
 $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$
