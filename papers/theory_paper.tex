@@ -62,7 +62,7 @@
 \maketitle
 
 \begin{abstract}
-We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, explaining why $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$; and (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$. As secondary validation, we identify a critical point $J_c \approx 0.35$ in synthetic RFF networks where $\alpha$ diverges, though this is not observed in real architectures with skip connections. The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
+We present ThermoRG, a thermodynamic theory of neural network architecture scaling that reveals scaling laws do not follow arbitrary statistics---they obey strict physical laws analogous to the ideal gas equation of state. Central to our theory is the identification of $L(D) = \alpha D^{-\beta} + E_{\mathrm{floor}}$ as the neural network's \emph{equation of state}, analogous to $PV = NRT$ for ideal gases. Using renormalization group (RG) methods, we derive the complete D-scaling law including: (1) the GELU width decay exponent $\alpha_{\mathrm{GELU}} \approx 0.45$, with the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ measured directly across ThermoNet families; and (2) the coupling between the scaling exponent $\beta$ and variance fluctuation $\gamma$ through $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near the Edge of Stability critical point $\gamma_c \approx 2.0$. As secondary validation, we identify a critical point $J_c \approx 0.35$ in synthetic RFF networks where $\alpha$ diverges, though this is not observed in real architectures with skip connections. The physical laws give us a perfect skeleton (form), but the flesh (constants $B$, $C$, $\gamma_c$) must be determined by thermodynamic contact with the specific environment (dataset). This limitation and its resolution are discussed in the companion Applied Paper.
 \end{abstract}
 
 % ==============================================================================
@@ -89,7 +89,7 @@ just as the ideal gas law $PV = NRT$ is the equation of state for gases. The par
 
 \item \textbf{RG Derivation of D-Scaling.} We derive the complete D-scaling law from Wilsonian renormalization group theory:
     \begin{itemize}
-    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ explains $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$
+    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ with empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ measured directly
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/\gamma_c) + 0.893$ near $\gamma_c \approx 2.0$
     \end{itemize}
 
@@ -257,7 +257,7 @@ The power-law form holds with $R^2 > 0.996$ across all configurations, confirmin
 
 We now derive from first principles why width $D$ emerges as the \emph{universal} scaling parameter, not depth or other architectural quantities. We address three questions: (1) why does width appear in the scaling law from RMT and network structure? (2) can we define a universal ``effective scale'' for any architecture? and (3) why is depth secondary to width for scaling?
 
-\subsection{RMT + GELU: Deriving $\lambda_{\max} \propto D^{0.26}$ and $D_{\mathrm{eff}} \propto D^{0.48}$}
+\subsection{RMT + GELU: Effective Dimension Scaling and the Saturation Question}
 
 Consider a weight matrix $W \in \mathbb{R}^{C_{\mathrm{out}} \times C_{\mathrm{in}}}$ with He initialization: $W_{ij} \sim \mathcal{N}(0, 2/C_{\mathrm{in}})$ for linear layers; for Conv2d with kernel $k \times k$, variance is $2/(C_{\mathrm{in}} \cdot k^2)$.
 
@@ -289,8 +289,9 @@ Random matrix theory for products $J = D W$ (with $D$ diagonal, entries i.i.d.) 
 \end{equation}
 where $\mu_D = \mathbb{E}[\mathrm{GELU}'(z)] \approx 0.5$ (mean derivative over Gaussian $z$) and $\sigma_D^2$ is its variance. For large $D$, the empirical finding (5-seed averaged, $D \in [16, 96]$) is:
 \begin{equation}
-\boxed{\Lambda_{\max}(J) \;\propto\; D^{0.52}} \qquad\Longrightarrow\qquad \boxed{\lambda_{\max}(J) \;\propto\; D^{0.26}}.
+\boxed{\Lambda_{\max}(J) \;\propto\; D^{0.52}}.
 \end{equation}
+Note: the original hypothesis that this implies a $D^{0.26}$ saturation regime was disproven by Gap 2, which established that standard RMT at initialization gives $\lambda_{\max} \propto D^{0.48}$, not $D^{0.26}$. The physical origin of the empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$ may lie in standard RMT eigenvalue concentration combined with finite-width corrections (see Discussion).
 
 \medskip\noindent\textbf{Step 4: Effective dimension scaling.} Combining with $\|W\|_F^2 \propto D$:
 \begin{equation}
@@ -341,7 +342,7 @@ For random i.i.d. matrices, the ratio of largest to smallest singular values gro
 \end{equation}
 leading to vanishing/exploding gradients. Depth increases optimization difficulty super-exponentially.
 
-In contrast, width affects condition number \emph{polynomially}. From the RMT+GELU result, $\lambda_{\max}(J_l) \propto D^{0.26}$ and $\|J_l\|_F \propto D^{0.5}$. The condition number per layer is:
+In contrast, width affects condition number \emph{polynomially}. From the empirical spectral scaling, $\Lambda_{\max}(J_l) \propto D^{0.52}$ (see Discussion on the open question of its physical origin) and $\|J_l\|_F \propto D^{0.5}$. The condition number per layer is:
 \begin{equation}
 \kappa(J_l) \;=\; \frac{\lambda_{\max}(J_l)^2}{\|J_l\|_F^2 / D_{\mathrm{eff}}}
 \;\propto\; \frac{D^{0.52}}{D^{0.48}/D^{0.48}} \;\propto\; D^{0.52}.
@@ -623,6 +624,25 @@ This limitation motivates the companion Applied Paper, which shows how to perfor
 % ==============================================================================
 % 8. DISCUSSION
 % ==============================================================================
+
+\subsection{On the GELU Saturation Mechanism}
+
+Gap 2 established that standard RMT at initialization gives
+$\lambda_{\max} \propto D^{0.48}$, not the $D^{0.26}$ saturation
+regime originally hypothesized. Gap 2b further shows that standard
+SGD training from standard initialization cannot access this
+$D^{0.26}$ regime, with Edge of Stability (EoS) collapse occurring
+within the first training epoch.
+
+However, we emphasize that the empirical depth scaling
+$J_{\mathrm{topo}}(D) \propto D^{-\alpha_{\mathrm{GELU}}/L}$
+($\alpha_{\mathrm{GELU}} \approx 0.45$) was measured \emph{directly}
+and remains valid across ThermoNet families. The physical origin
+of this scaling may lie in standard RMT eigenvalue concentration
+($\lambda_{\max} \propto D^{0.48}$) combined with finite-width
+corrections, rather than activation saturation per se.
+This question presents a natural direction for future theoretical work.
+
 \section{Discussion}
 
 \subsection{Physical Interpretation}
@@ -667,7 +687,7 @@ We presented ThermoRG, a thermodynamic theory that derives the neural D-scaling 
 
 \item \textbf{RG Derivation:} We derived the complete scaling law including:
     \begin{itemize}
-    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ validated exactly across depths
+    \item GELU width decay: $\alpha_{\mathrm{GELU}} \approx 0.45$ with empirical depth scaling $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ validated across depths; the physical origin of this scaling is an open question (see Discussion)
     \item $\beta$ coupling with $\gamma$: $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ validated across three orders of magnitude
     \end{itemize}
     As secondary validation, we identified $J_c \approx 0.35$ as a percolation critical point in synthetic RFF networks, though real architectures with skip connections do not exhibit this divergence.
