@@ -157,7 +157,7 @@ This was validated on CIFAR-10 (5-seed averaged): depth=3 gives slope $-0.150$ v
 \medskip
 \noindent\textbf{Note on notation:} $\alpha_{\mathrm{GELU}} \approx 0.45$ is the width-decay exponent of $J_{\mathrm{topo}}$, distinct from $\alpha_{\mathrm{type}}$ in the D-scaling law (which is a fitted prefactor with values $\sim 3.9$--$7.6$). These are different physical parameters with different dimensions.
 
-% See Appendix for derivation of $\alpha_{\mathrm{GELU}} \approx 0.45$ from GELU saturation.
+See Appendix~\ref{sec:gelu-derivation} for the derivation of $\alpha_{\mathrm{GELU}} \approx 0.45$ from GELU saturation.
 
 \subsection{The D-Scaling Law}
 
@@ -213,7 +213,9 @@ Training dynamics undergoes a dynamical phase transition at the Edge of Stabilit
 \boxed{\beta(\gamma) = 0.425 \cdot \ln\!\Bigl(\frac{\gamma}{\gamma_c}\Bigr) + 0.893}, \quad \gamma_c = 2.0
 \end{equation}
 
-% See Appendix for the full RG derivation of the $\beta(\gamma)$ cooling formula.
+Here $\gamma_c \approx 2.0$ corresponds to the Edge-of-Stability critical point where the sharpness-to-weight-norm ratio satisfies $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$ \citep{cohen2021theory}.
+
+See Appendix~\ref{sec:beta-derivation} for the full RG derivation of the $\beta(\gamma)$ cooling formula.
 
 \textbf{Validated across three orders of magnitude of $\gamma$:}
 \begin{center}
@@ -231,7 +233,7 @@ These coefficients are obtained by linear regression of $\beta$ against $\ln(\ga
 
 \textbf{Cooling interpretation:} Normalization layers act as ``cooling'' mechanisms. BatchNorm reduces $\gamma$ from 3.39 to 2.29, which \emph{reduces} $\beta$ from 1.117 to 0.950. Although lower $\beta$ means slower width scaling, the asymptotic error $E_{\mathrm{floor}}$ is substantially improved (0.777 $\to$ 0.466) due to the optimization difficulty reduction.
 
-% See Appendix for derivation of the $\beta(\gamma)$ cooling formula from RG scaling theory.
+See Appendix~\ref{sec:beta-derivation} for the derivation of the $\beta(\gamma)$ cooling formula from RG scaling theory.
 
 \subsection{E$_{\mathrm{floor}}$ Decomposition}
 
@@ -247,7 +249,7 @@ L(D, \gamma) = 5.43 \cdot D^{-\beta(\gamma)} - 0.21 + 0.30 \cdot \gamma
 \end{equation}
 At $D \to \infty$: $E_{\mathrm{floor}} \approx 0.30 \cdot \gamma$ ($E_{\mathrm{task}} \approx 0$ on CIFAR-10).
 
-% See Appendix for the full derivation of the $E_{\mathrm{floor}}$ decomposition.
+See Appendix~\ref{sec:efloor-derivation} for the full derivation of the $E_{\mathrm{floor}}$ decomposition.
 
 \textbf{Key limitation:} Within fixed norm type, $J_{\mathrm{topo}}$ varies only $\sim 9\%$ across $D \in [32, 96]$, insufficient to independently fit the $B \cdot J_{\mathrm{topo}}^{\nu}$ term. In our current data range, $J_{\mathrm{topo}}$ varies little across widths, so $\gamma$ serves as a proxy for the topology channel in experiments. The $J_{\mathrm{topo}}$ effect on $E_{\mathrm{floor}}$ is captured through $\gamma$, which co-varies with optimization difficulty across normalization types.
 
