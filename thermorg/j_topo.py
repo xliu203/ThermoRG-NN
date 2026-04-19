@@ -251,10 +251,10 @@ def detect_dense_block(module: nn.Module, name: str, prev_c_out: int) -> Optiona
     c_in = first_conv.in_channels
     c_out = first_conv.out_channels
     
-    # Dense block characteristic: c_in > prev_c_out (due to concatenation)
-    # The bottleneck conv may expand channels (ic -> 4*gr -> oc), so we check ic > prev_c
-    # For DenseNet, growth_rate = oc // 4 (bottleneck compression ratio)
-    if c_in > prev_c_out:
+    # Dense block characteristic: c_in >= prev_c_out (due to concatenation)
+    # For DenseNet, c_in equals prev_c_out because dense block receives same channels
+    # from previous layer (concatenation preserves channels, transition may compress)
+    if c_in >= prev_c_out:
         growth_rate = c_out // 4 if c_out >= 4 else c_out
         # Count number of conv layers in this dense block
         num_layers = sum(1 for m in module.modules() if isinstance(m, nn.Conv2d))
