@@ -45,11 +45,28 @@ This was validated on CIFAR-10 (5-seed averaged): depth=3 gives slope $-0.150$ v
 
 For a fixed architecture trained on a fixed dataset:
 \begin{equation}
-\boxed{L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}}
+\boxed{L(D) = \alpha_{\mathrm{family}} \cdot D^{-\beta} + E_{\mathrm{floor}}}
 \end{equation}
-where $D$ is the base channel width, $\alpha$ is the complexity penalty, $\beta$ is the \emph{learning efficiency} (fractional loss reduction per unit increase in $\log D$), and $E_{\mathrm{floor}}$ is the asymptotic irreducible error.
+where $D$ is the base channel width, $\alpha_{\mathrm{family}}$ is the architecture-family complexity penalty (fitted per family), $\beta$ is the \emph{learning efficiency} (fractional loss reduction per unit increase in $\log D$), and $E_{\mathrm{floor}}$ is the asymptotic irreducible error.
 
-Fitted values on CIFAR-10 (200 epochs, TPU, 2 seeds):
+\medskip
+\noindent\textbf{Parameter scope:} The D-scaling law involves three parameters with different scopes:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Parameter & Source & Scope \\
+\midrule
+$\beta$ & Cooling theory & Universal across architectures \\
+$E_{\mathrm{floor}}$ & Cooling theory & Depends on normalization type \\
+$\alpha_{\mathrm{family}}$ & Fitted per family & Architecture-family specific \\
+\bottomrule
+\end{tabular}
+\end{center}
+\medskip
+
+Note that $\alpha_{\mathrm{family}}$ controls the \emph{width scaling rate} within a fixed architecture family. Different architecture families (e.g., VGG, ResNet, DenseNet) have different $\alpha$ values — this is an empirical observation, not a prediction of our theory. Our theory's key prediction is the \emph{functional form} $D^{-\beta}$ and the \emph{cooling law} $\beta(\gamma)$, both of which are validated within the ThermoNet family.
+
+Fitted values on CIFAR-10 (200 epochs, TPU, 2 seeds) within the ThermoNet family:
 
 \begin{center}
 \begin{tabular}{lcccc}
@@ -62,6 +79,9 @@ LayerNorm & 0.41 & 0.219 & — & 0.999 \\
 \bottomrule
 \end{tabular}
 \end{center}
+\medskip
+
+\noindent\textbf{Within ThermoNet family, $\alpha \approx 7.6$ (plain ConvNet with BatchNorm).}
 
 \subsection{Cooling Theory: $\beta(\gamma)$}
 
@@ -139,7 +159,7 @@ ThermoNet-6 (W=64) & 0.807 & 0.6M & 6 & 80.2\% (200ep) \\
 \end{tabular}
 \end{center}
 
-\textbf{Key observations:}
+\textbf{Key observations (cross-architecture, observational):}
 \begin{itemize}
 \item DenseNet's dense concatenation maximizes $J_{\mathrm{topo}}$ (0.88--0.90) and achieves best accuracy (94--95\%)
 \item DenseNet's dense concatenation creates a unique information flow pattern: each layer has access to ALL previous features. Using cumulative channel tracking, we compute $\eta_l = (C_{\mathrm{cum}} + k) / C_{\mathrm{cum}} \approx 1$ within dense blocks, giving DenseNet the highest $J_{\mathrm{topo}}$ among standard architectures. This confirms that dense connectivity maximizes information flow uniformity.
@@ -147,6 +167,7 @@ ThermoNet-6 (W=64) & 0.807 & 0.6M & 6 & 80.2\% (200ep) \\
 \item VGG-11's progressive width doubling (64→512) creates bottlenecks, giving lowest $J_{\mathrm{topo}}$ (0.65) but compensates with brute-force width
 \item ThermoNet-6 W=96 achieves 87.4\% in 50 epochs with $J_{\mathrm{topo}} \approx 0.79$ — comparable to VGG-11 in half the epochs
 \item ThermoNet's first layer bottleneck (3→96) does not prevent strong performance when width is sufficient
+\item \textbf{Observational only:} Different architectures have different $\alpha$ values. We do not predict $\alpha$ for ResNet, DenseNet, or VGG — these are empirical observations. The $J_{\mathrm{topo}}$ metric, however, correctly orders architectures by performance: DenseNet ($J=0.88$--$0.90$) > ResNet ($J=0.69$) > VGG ($J=0.65$), consistent with their accuracy ordering.
 \end{itemize}
 
 \subsection{HBO: Architecture Search with Zero-Cost Prediction}
@@ -198,7 +219,28 @@ The gold architecture discovered: \textbf{96 channels, depth 6, BatchNorm, no sk
 
 \section{Discussion}
 
-The ThermoRG framework provides a unified thermodynamic interpretation of neural architecture scaling. Key insights:
+The ThermoRG framework provides a unified thermodynamic interpretation of neural architecture scaling. The theory's key predictions — D-scaling, $J_{\mathrm{topo}}(D)$ decay, and $\beta(\gamma)$ cooling — are all validated within the ThermoNet family (plain convolutional networks, $R^2 = 0.77$--$0.89$). Importantly, the theory's parameter $\alpha_{\mathrm{family}}$ is family-specific, fitted per architecture type; our theory does not predict $\alpha$ for other architecture families.
+
+\medskip
+\noindent\textbf{Within-family predictions (validated):}
+\begin{itemize}
+\item $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation
+\item $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law across three orders of magnitude of $\gamma$
+\item Two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations
+\item Design principle: width-first + $J_{\mathrm{topo}}$ within groups for architecture search
+\end{itemize}
+
+\medskip
+\noindent\textbf{Cross-architecture observations (observational, not predictive):}
+\begin{itemize}
+\item $J_{\mathrm{topo}}$ ordering matches accuracy ordering: DenseNet > ResNet > VGG
+\item Skip-aware and cumulative-channel $J_{\mathrm{topo}}$ computation correctly handles ResNet and DenseNet
+\item Different architectures have different $\alpha$ values (this is empirical, not predicted)
+\end{itemize}
+
+These cross-architecture observations suggest the theory extends naturally to other design principles (skip connections, dense connectivity), though comprehensive validation across architecture families remains future work.
+
+Key insights:
 
 \textbf{1. Information flow as order parameter.} $J_{\mathrm{topo}}$ measures how uniformly information propagates through the network. Higher $J_{\mathrm{topo}}$ → more uniform flow → easier optimization. This is analogous to the correlation function in statistical physics.
 
@@ -210,6 +252,9 @@ The ThermoRG framework provides a unified thermodynamic interpretation of neural
 
 \section{Conclusion}
 
-We presented ThermoRG, a thermodynamic theory of neural architecture scaling. The framework correctly predicts: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law across three orders of magnitude of $\gamma$; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations; and (4) the design principle width-first + $J_{\mathrm{topo}}$ within groups for architecture search.
+We presented ThermoRG, a thermodynamic theory of neural architecture scaling for plain convolutional networks. The framework correctly predicts within the ThermoNet family: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law across three orders of magnitude of $\gamma$; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations; and (4) the design principle width-first + $J_{\mathrm{topo}}$ within groups for architecture search.
+
+\medskip
+Observationally, our $J_{\mathrm{topo}}$ metric — computed with skip-aware and cumulative-channel formulations — correctly orders diverse architectures (DenseNet, ResNet, VGG) by performance, suggesting the theory extends to other design principles. However, the scaling parameter $\alpha$ is architecture-family specific; predicting $\alpha$ for non-ThermoNet architectures remains an open question.
 
 Future directions include: calibrating $\phi_{\mathrm{BN}}$ and $\phi_{\mathrm{LN}}$ on ImageNet and other datasets; extending the framework to attention-based architectures (ViT); and implementing the ThermoRG-MF algorithm for practical architecture search.
