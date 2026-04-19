@@ -223,12 +223,13 @@ Configuration & $\gamma$ & $\beta_{\mathrm{pred}}$ & $\beta_{\mathrm{actual}}$ &
 \midrule
 LayerNorm & 0.41 & 0.220 & 0.219 & +0.001 \\
 BatchNorm & 2.29 & 0.950 & 0.950 & 0.000 \\
-None & 3.21 & 1.095 & 1.117 & +0.022 \\
+None & 3.39 & 1.095 & 1.117 & +0.022 \\
 \bottomrule
 \end{tabular}
 \end{center}
+These coefficients are obtained by linear regression of $\beta$ against $\ln(\gamma/\gamma_c)$ across the three normalization types (LN, BN, None); see Appendix for derivation.
 
-\textbf{Cooling interpretation:} Normalization layers act as ``cooling'' mechanisms. BatchNorm reduces $\gamma$ from 3.21 to 2.29, which \emph{reduces} $\beta$ from 1.117 to 0.950. Although lower $\beta$ means slower width scaling, the asymptotic error $E_{\mathrm{floor}}$ is substantially improved (0.777 $\to$ 0.466) due to the optimization difficulty reduction.
+\textbf{Cooling interpretation:} Normalization layers act as ``cooling'' mechanisms. BatchNorm reduces $\gamma$ from 3.39 to 2.29, which \emph{reduces} $\beta$ from 1.117 to 0.950. Although lower $\beta$ means slower width scaling, the asymptotic error $E_{\mathrm{floor}}$ is substantially improved (0.777 $\to$ 0.466) due to the optimization difficulty reduction.
 
 % See Appendix for derivation of the $\beta(\gamma)$ cooling formula from RG scaling theory.
 
@@ -256,7 +257,7 @@ A convolutional layer with stride $s = 2$ performs a coarse-graining (block-spin
 \begin{equation}
 \beta = \beta_0 \cdot (0.87)^{\,n_s}
 \end{equation}
-where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimension of the stride perturbation. This would explain ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$; however, note that this RG blocking interpretation awaits experimental validation in controlled settings (future work).
+where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimension of the stride perturbation. The factor 0.87 is the estimated RG scaling dimension of the stride perturbation, derived from theoretical RG analysis (see Appendix). This would explain ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$; however, note that this RG blocking interpretation awaits experimental validation in controlled settings (future work).
 
 \medskip
 \noindent\textbf{Summary of ThermoRG Objects.} Table~\ref{tab:thermorg-summary} summarizes the four central objects, their equations, physical meanings, and validation status.
