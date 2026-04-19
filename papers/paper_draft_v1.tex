@@ -2,7 +2,7 @@
 
 The ThermoRG framework describes neural architecture scaling through the lens of thermodynamics and renormalization group (RG) theory. The central objects are: (1) the effective dimension $D_{\mathrm{eff}}$ of each weight matrix, (2) the topological correlation $J_{\mathrm{topo}}$ measuring information-flow quality, (3) the variance fluctuation $\gamma$ characterizing training dynamics, and (4) the scaling exponent $\beta$ governing how fast loss decreases with width.
 
-Our experimental validation focuses on plain convolutional networks with different normalization layers (BatchNorm, LayerNorm, and no normalization), which serve as controlled building blocks. The theory framework also provides interpretations for more complex architectural motifs such as skip connections (ResNet-style) and dense connections (DenseNet-style); we demonstrate how J_topo naturally extends to these cases but note that comprehensive scaling law validation for skip and dense connections remains future work.
+We experimentally validate the ThermoRG framework on plain convolutional networks with different normalization layers (BatchNorm, LayerNorm, and no normalization), demonstrating that D-scaling laws, $J_{\mathrm{topo}}$ quality metrics, and $\beta(\gamma)$ cooling theory all hold across these controlled building blocks. The theory framework further provides interpretations for skip connections (ResNet-style) and dense connections (DenseNet-style) via $J_{\mathrm{topo}}$ computation; however, comprehensive scaling law validation for these architectural motifs remains future work.
 
 \subsection{Effective Dimension}
 
