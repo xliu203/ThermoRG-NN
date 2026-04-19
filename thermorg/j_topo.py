@@ -80,15 +80,23 @@ def compute_D_eff_from_W_eff(W_eff: torch.Tensor, n_iter: int = 20) -> float:
 
 def compute_resblock_eff_W(W1: torch.Tensor, W2: torch.Tensor, W_skip=None) -> torch.Tensor:
     """
-    Compute effective weight for a residual block: W_eff = I + W2 @ W1 (+ W_skip if projection).
+    Compute effective weight for a residual block.
     
-    For a residual block: y = x + F(x) where F(x) = W2 * σ(W1 * x)
-    The gradient flows through BOTH the identity shortcut AND the conv path.
-    The combined effect on D_eff uses the effective weight:
-        W_eff = I + W2 @ W1
+    THEORY (CORRECTED based on ThermoRG):
+    - Skip connections provide SHORTCUT paths that REDUCE effective depth
+    - They bypass computation, making information flow more uniform
+    - For D_eff, use W_eff = I + W2*W1 for identity skip (raises D_eff)
+    - For projection skip, skip and main path operate on DIFFERENT inputs,
+      so we use only the main path W2*W1 for D_eff
     
-    For projection skip (when ic != oc or stride > 1):
-        W_eff = W_projection + W2 @ W1  (projection skip replaces identity)
+    Key insight: W_eff = I + W2*W1 has D_eff closer to identity (C) than
+    either W2 or W1 alone. This is correct for identity skip.
+    
+    For projection skip (stride-2 or channel change):
+    - The skip operates on input x with different stride/channels
+    - The main path F(x) operates on transformed input
+    - These are NOT directly combinable as W_skip + W2*W1
+    - Instead, use W2*W1 for D_eff (the transformation path)
     
     Args:
         W1: Weight tensor of first conv layer (shape: [C_out, C_in, K, K] for Conv2d)
@@ -101,28 +109,33 @@ def compute_resblock_eff_W(W1: torch.Tensor, W2: torch.Tensor, W_skip=None) -> t
     device = W1.device
     dtype = W1.dtype
     c_out = W2.shape[0]
+    c_in = W1.shape[1]
     
     if W1.dim() == 4:
         # Conv2d case: use channel-space approximation
-        # Get channel matrices by averaging over spatial dimensions
         W1_ch = W1.mean(dim=(2, 3))  # (C_out, C_in)
         W2_ch = W2.mean(dim=(2, 3))  # (C_out, C_out)
         
-        if W_skip is not None and not isinstance(W_skip, type(None)):
-            # Projection skip: W_eff = W_skip_ch + W2_ch @ W1_ch
-            W_skip_ch = W_skip.mean(dim=(2, 3)) if W_skip.dim() == 4 else W_skip
-            W_eff_ch = W_skip_ch + torch.matmul(W2_ch, W1_ch)
-        else:
-            # Identity skip: W_eff = I + W2_ch @ W1_ch
+        if W_skip is not None:
+            # Projection skip: W_skip and W2*W1 operate on different inputs
+            # Use only the transformation path W2*W1 for D_eff
+            # The skip's benefit is in bypassing computation, not in D_eff
+            W_eff_ch = torch.matmul(W2_ch, W1_ch)
+        elif c_in == c_out:
+            # Identity skip: W_eff = I + W2*W1
+            # This raises D_eff toward C (more uniform)
             I_ch = torch.eye(c_out, dtype=dtype, device=device)
             W_eff_ch = I_ch + torch.matmul(W2_ch, W1_ch)
+        else:
+            # No skip or unknown skip type: use W2*W1
+            W_eff_ch = torch.matmul(W2_ch, W1_ch)
         
         return W_eff_ch
         
     elif W1.dim() == 2 and W2.dim() == 2:
         # Linear layers case
-        if W_skip is not None:
-            W_eff = W_skip + torch.matmul(W2, W1)
+        if W_skip is not None or W1.shape[0] != W2.shape[0]:
+            W_eff = torch.matmul(W2, W1)
         else:
             I = torch.eye(W2.shape[0], dtype=dtype, device=device)
             W_eff = I + torch.matmul(W2, W1)
@@ -219,13 +232,10 @@ def detect_dense_block(module: nn.Module, name: str, prev_c_out: int) -> Optiona
     """
     name_lower = name.lower()
     
-    # Pattern 1: Name-based detection
-    is_dense_name = any(p in name_lower for p in ['dense', 'denseblock', 'dense_block'])
+    # Pattern 1: STRICT name-based detection - must have 'dense', 'db', or 'denseblock' in name
+    is_dense_name = any(p in name_lower for p in ['dense', 'db', 'denseblock', 'dense_block'])
     
-    # Pattern 2: Sequential with characteristic growing input channels
-    is_seq = isinstance(module, nn.Sequential)
-    
-    if not (is_dense_name or is_seq):
+    if not is_dense_name:
         return None
     
     # For DenseNet, find first conv to determine characteristics
@@ -242,12 +252,17 @@ def detect_dense_block(module: nn.Module, name: str, prev_c_out: int) -> Optiona
     c_out = first_conv.out_channels
     
     # Dense block characteristic: c_in > prev_c_out (due to concatenation)
-    if c_in > prev_c_out or (c_in > c_out and is_dense_name):
+    # The bottleneck conv may expand channels (ic -> 4*gr -> oc), so we check ic > prev_c
+    # For DenseNet, growth_rate = oc // 4 (bottleneck compression ratio)
+    if c_in > prev_c_out:
         growth_rate = c_out // 4 if c_out >= 4 else c_out
+        # Count number of conv layers in this dense block
+        num_layers = sum(1 for m in module.modules() if isinstance(m, nn.Conv2d))
         return {
             'c_in': c_in,
             'c_out': c_out,
             'growth_rate': growth_rate,
+            'num_layers': num_layers,
             'is_dense': True
         }
     
