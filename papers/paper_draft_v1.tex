@@ -152,12 +152,14 @@ ThermoNet-6 (W=64) & 0.807 & 0.6M & 6 & 80.2\% (200ep) \\
 
 \textbf{Confounding analysis:} Simple correlation $r(J_{\mathrm{topo}}, L) = +0.588$ (misleading). Within fixed width groups: $r(J_{\mathrm{topo}}, L \mid W) = -0.794$ ($p=0.006$). Width and $J_{\mathrm{topo}}$ are anti-correlated ($r = -0.922$) — wider networks have lower $J_{\mathrm{topo}}$ because of the GELU spectral effect.
 
-\textbf{HBO\_revised (Width-First + J$_{\mathrm{topo}}$ Within Groups):}
+\textbf{Unified Scoring Function:} To jointly account for width and topology, we fit a simple unified scoring function: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$, trained on the 10-architecture Phase B2 dataset. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$, confirming that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss (fitted: $w_1 = -0.53$, $w_2 = -3.59$). However, because $J_{\mathrm{topo}}$ and $W$ are themselves anti-correlated ($r = -0.922$), the unified score cannot fully separate their independent effects. A Score threshold of $-5.0$ correctly identifies the top-3 architectures but admits false positives near the boundary (e.g., W32-D6 with J=0.86 scores $-4.92$, comparable to W64-D4 with J=0.75).
+
+\textbf{HBO\_revised (Two-Stage Screening):} To handle the width-topology confounding, we implement a two-stage screening procedure:
 \begin{enumerate}
-\item Filter: width $\geq 48$ (capacity constraint)
-\item Screen: top-30 by $J_{\mathrm{topo}}$ HIGH (optimization efficiency)
-\item L1: train top-30 for 10 epochs on 10\% data
-\item L2: train top-5 for 50 epochs on full data
+\item \textbf{Stage 1 (Capacity Filter):} width $\geq 48$ — this is the minimum capacity for CIFAR-10; narrower networks (W=24,32) have insufficient degrees of freedom even if $J_{\mathrm{topo}}$ is high.
+\item \textbf{Stage 2 (Topology Ranking):} within width groups, rank by $J_{\mathrm{topo}}$ HIGH — higher $J_{\mathrm{topo}}$ indicates more uniform information flow and easier optimization.
+\item \textbf{L1:} train top-30 candidates for 10 epochs on 10\% data (fast coarse screening)
+\item \textbf{L2:} train top-5 candidates for 50 epochs on full data (fine-grained evaluation)
 \end{enumerate}
 
 \textbf{Result:} HBO\_revised outperforms random search:
@@ -186,10 +188,8 @@ Mean & — & 0.443 & — & 0.563 \\
 \item HBO\_revised Rank 1 (0.377) beats Random Rank 1 (0.427) by 12\%
 \item HBO\_revised Rank 5 (0.507) beats Random Rank 4 (0.664) — HBO's worst beats Random's 4th
 \item All top-5 HBO\_revised architectures use BN + NoSkip (optimal cooling state)
-\item Width is the dominant factor: 96/6 > 64/6 $\approx$ 48/6
+\item The unified scoring function ($R^2=0.89$) and the two-stage heuristic arrive at consistent rankings, but the two-stage approach is more robust at boundaries due to the width-topology confounding
 \end{itemize}
-
-\textbf{Unified Scoring Validation.} As a sanity check, we fit a simple unified scoring function to the Phase B2 data: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$ on the 10 architecture dataset, comparable to the two-stage heuristic. The fitted coefficients are $w_1 = -0.53$, $w_2 = -3.59$, indicating that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss. This confirms that the two-stage approach (width-first, then $J_{\mathrm{topo}}$ within groups) captures the same information as a unified function, but with better interpretability and fewer free parameters.
 
 The gold architecture discovered: \textbf{96 channels, depth 6, BatchNorm, no skip connections} ($J_{\mathrm{topo}} \approx 0.78$, val loss 0.377, accuracy 87.4\% in 50 epochs). This is essentially VGG-11 with BatchNorm — achieving comparable accuracy to VGG-11 (91\%) in half the epochs.
 
