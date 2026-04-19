@@ -269,6 +269,36 @@ def detect_dense_block(module: nn.Module, name: str, prev_c_out: int) -> Optiona
     return None
 
 
+def detect_transition_layer(module: nn.Module, name: str) -> bool:
+    """
+    Detect if a module is a transition layer between dense blocks.
+    
+    Args:
+        module: PyTorch module
+        name: Module name (for pattern matching)
+        
+    Returns:
+        True if this is a transition layer, False otherwise
+    """
+    name_lower = name.lower()
+    
+    # STRICT: Only match top-level transition (ends with transition or transitionN)
+    # Don't match children like transition.norm, transition.conv
+    is_top_level_transition = (
+        name_lower.endswith('transition') or
+        name_lower.endswith('transition1') or
+        name_lower.endswith('transition2') or
+        name_lower.endswith('transition3') or
+        name_lower == 'transition'
+    )
+    
+    if not is_top_level_transition:
+        return False
+    
+    # Check if it's actually a _Transition type
+    return type(module).__name__ == '_Transition'
+
+
 def compute_D_eff_for_dense_layer(W: torch.Tensor, c_effective_in: int) -> float:
     """
     Compute D_eff for a layer in a dense block, accounting for growing input.
@@ -360,7 +390,83 @@ def compute_J_topo(
             i += 1
             continue
         
-        # Detect residual block
+        # Detect dense block FIRST (before residual block, since 'denseblock' matches 'block' pattern)
+        dense_info = detect_dense_block(module, name, prev_c_out if prev_c_out else 0)
+        if dense_info is not None:
+            # Process dense block using CUMULATIVE CHANNEL TRACKING
+            # Key insight: DenseNet preserves all previous channels (via concatenation)
+            # and adds k new channels per layer
+            # So: η = (C_cum + k) / C_cum ≈ 1 + k/C_cum (very uniform, close to 1)
+            
+            c_cumulative = dense_info['c_in']  # Start with block's input channels
+            growth = dense_info.get('growth_rate', 32)  # Default growth rate
+            
+            # Mark all child modules as processed to avoid double-counting
+            for child_name, _ in named_modules_list:
+                if child_name != name and child_name.startswith(name + '.'):
+                    processed_names.add(child_name)
+            
+            # Collect all DenseLayers in order
+            dense_layers = []
+            for m in module.modules():
+                if m is module:
+                    continue
+                if hasattr(m, 'conv2') and isinstance(m.conv2, nn.Conv2d):
+                    dense_layers.append(m)
+            
+            # Process each dense layer
+            for layer_idx, dense_layer in enumerate(dense_layers):
+                conv2 = dense_layer.conv2
+                k = conv2.out_channels  # Growth rate for this layer
+                
+                # η = (C_cum + k) / C_cum = 1 + k/C_cum
+                # This is the expansion ratio due to channel concatenation
+                if c_cumulative > 0:
+                    eta = (c_cumulative + k) / c_cumulative
+                    eta_list.append(float(eta))
+                
+                # Update cumulative channels
+                c_cumulative += k
+                prev_c_out = k  # Each dense layer outputs k channels
+            
+            # Update prev_D_eff tracking (needed for non-denseNet layers after)
+            prev_D_eff = float(c_cumulative)  # Approximate
+            prev_c_out = k if dense_layers else prev_c_out
+            
+            i += 1
+            continue
+        
+        # Detect transition layer (_Transition in torchvision DenseNet)
+        # Transition layers compress channels: η = C_out / C_cum
+        if detect_transition_layer(module, name):
+            # Find the conv layer in transition
+            conv = None
+            for m in module.modules():
+                if isinstance(m, nn.Conv2d):
+                    conv = m
+                    break
+            
+            if conv is not None:
+                c_out = conv.out_channels
+                c_in = conv.in_channels
+                
+                # η = C_out / C_cum (compression ratio)
+                if c_in > 0:
+                    eta = c_out / c_in
+                    eta_list.append(float(eta))
+                
+                prev_c_out = c_out
+                prev_D_eff = float(c_out)
+                
+                # Mark children as processed
+                for child_name, _ in named_modules_list:
+                    if child_name != name and child_name.startswith(name + '.'):
+                        processed_names.add(child_name)
+                
+                i += 1
+                continue
+        
+        # Detect residual block (check AFTER dense block to avoid false positives)
         resblock_info = detect_residual_block(module, name)
         if resblock_info is not None:
             W1 = resblock_info['W1']
@@ -394,48 +500,6 @@ def compute_J_topo(
             for child_name, _ in named_modules_list:
                 if child_name != name and (child_name.startswith(name + '.') or child_name.startswith(name + '.')):
                     processed_names.add(child_name)
-            
-            i += 1
-            continue
-        
-        # Detect dense block
-        dense_info = detect_dense_block(module, name, prev_c_out if prev_c_out else 0)
-        if dense_info is not None:
-            # Process dense block layer by layer
-            dense_block = module
-            c_cumulative = dense_info['c_in']
-            growth = dense_info.get('growth_rate', dense_info['c_out'] // 4)
-            
-            # Mark all child modules as processed to avoid double-counting
-            for child_name, _ in named_modules_list:
-                if child_name != name and (child_name.startswith(name + '.') or child_name.startswith(name + '.')):
-                    processed_names.add(child_name)
-            
-            # Process each conv layer in the dense block
-            for j, sub_module in enumerate(dense_block.modules()):
-                if sub_module is dense_block:
-                    continue
-                
-                W = get_layer_weights_for_J_topo(sub_module, f"{name}.layer{j}")
-                if W is None:
-                    continue
-                
-                if isinstance(sub_module, nn.Conv2d):
-                    c_out = sub_module.out_channels
-                    
-                    D_eff = compute_D_eff_for_dense_layer(W, c_cumulative)
-                    
-                    if prev_D_eff is not None and prev_c_out is not None:
-                        eta = D_eff / max(prev_D_eff, 1.0)
-                        s = sub_module.stride[0] if hasattr(sub_module, 'stride') else 1
-                        if use_stride_correction and s > 1:
-                            zeta = (c_out / prev_c_out) / (s ** 2)
-                            eta = eta * zeta
-                        eta_list.append(float(eta))
-                    
-                    prev_D_eff = D_eff
-                    prev_c_out = c_out
-                    c_cumulative += growth
             
             i += 1
             continue
