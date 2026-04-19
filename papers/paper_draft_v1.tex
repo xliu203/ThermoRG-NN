@@ -189,6 +189,8 @@ Mean & — & 0.443 & — & 0.563 \\
 \item Width is the dominant factor: 96/6 > 64/6 $\approx$ 48/6
 \end{itemize}
 
+\textbf{Unified Scoring Validation.} As a sanity check, we fit a simple unified scoring function to the Phase B2 data: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$ on the 10 architecture dataset, comparable to the two-stage heuristic. The fitted coefficients are $w_1 = -0.53$, $w_2 = -3.59$, indicating that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss. This confirms that the two-stage approach (width-first, then $J_{\mathrm{topo}}$ within groups) captures the same information as a unified function, but with better interpretability and fewer free parameters.
+
 The gold architecture discovered: \textbf{96 channels, depth 6, BatchNorm, no skip connections} ($J_{\mathrm{topo}} \approx 0.78$, val loss 0.377, accuracy 87.4\% in 50 epochs). This is essentially VGG-11 with BatchNorm — achieving comparable accuracy to VGG-11 (91\%) in half the epochs.
 
 \section{Discussion}
