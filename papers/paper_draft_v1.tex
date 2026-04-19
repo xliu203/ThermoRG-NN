@@ -2,6 +2,8 @@
 
 The ThermoRG framework describes neural architecture scaling through the lens of thermodynamics and renormalization group (RG) theory. The central objects are: (1) the effective dimension $D_{\mathrm{eff}}$ of each weight matrix, (2) the topological correlation $J_{\mathrm{topo}}$ measuring information-flow quality, (3) the variance fluctuation $\gamma$ characterizing training dynamics, and (4) the scaling exponent $\beta$ governing how fast loss decreases with width.
 
+Our experimental validation focuses on plain convolutional networks with different normalization layers (BatchNorm, LayerNorm, and no normalization), which serve as controlled building blocks. The theory framework also provides interpretations for more complex architectural motifs such as skip connections (ResNet-style) and dense connections (DenseNet-style); we demonstrate how J_topo naturally extends to these cases but note that comprehensive scaling law validation for skip and dense connections remains future work.
+
 \subsection{Effective Dimension}
 
 For a weight matrix $W \in \mathbb{R}^{C_{\mathrm{out}} \times C_{\mathrm{in}}}$, the effective dimension is:
@@ -140,7 +142,9 @@ where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimens
 \subsection{Setup}
 All experiments on CIFAR-10 (TPU, 200 epochs, cosine annealing, SGD+momentum=0.9) unless noted. ThermoNet architectures use Conv2d+GELU. $J_{\mathrm{topo}}$ computed via PI-20 on random initialization (zero-cost).
 
-\subsection{J$_{\mathrm{topo}}$ Across Architectures}
+\subsection{Extension to Skip and Dense Connections}
+
+To illustrate how the ThermoRG framework extends beyond plain ConvNets, we compute J_topo for standard architectures with skip connections (ResNet) and dense connections (DenseNet). These results are observational, not part of our core experimental validation, but demonstrate the generality of the J_topo metric.
 
 Using the code definition $J_{\mathrm{topo}} = \exp(-\frac{1}{L}\sum|\log\eta_l|)$:
 
@@ -252,7 +256,7 @@ Key insights:
 
 \section{Conclusion}
 
-We presented ThermoRG, a thermodynamic theory of neural architecture scaling using basic architecture building blocks (plain convolutional networks, skip connections, and dense connections). The framework correctly predicts using plain ConvNet building blocks: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law across three orders of magnitude of $\gamma$; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations; and (4) the design principle width-first + $J_{\mathrm{topo}}$ within groups for architecture search.
+We presented ThermoRG, a thermodynamic theory of neural architecture scaling validated on plain convolutional networks with different normalization layers. The framework also extends to skip connections (ResNet-style) and dense connections (DenseNet-style), which we interpret via J_topo computation but do not experimentally validate scaling laws for. The framework correctly predicts using plain ConvNet building blocks: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law across three orders of magnitude of $\gamma$; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations; and (4) the design principle width-first + $J_{\mathrm{topo}}$ within groups for architecture search.
 
 \medskip
 Observationally, our $J_{\mathrm{topo}}$ metric — computed with skip-aware and cumulative-channel formulations — correctly orders diverse architectures (DenseNet, ResNet, VGG) by performance, suggesting the theory extends to other design principles. However, the scaling parameter $\alpha$ is architecture-type specific; predicting $\alpha$ for different architecture types remains an open question.
