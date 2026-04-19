@@ -98,6 +98,24 @@ The rest of this paper is organized as follows. Section~\ref{sec:framework} intr
 
 The ThermoRG framework describes neural architecture scaling through the lens of thermodynamics and renormalization group (RG) theory. The central objects are: (1) the effective dimension $D_{\mathrm{eff}}$ of each weight matrix, (2) the topological correlation $J_{\mathrm{topo}}$ measuring information-flow quality, (3) the variance fluctuation $\gamma$ characterizing training dynamics, and (4) the scaling exponent $\beta$ governing how fast loss decreases with width.
 
+\medskip
+\noindent\textbf{Thermodynamic analogy.} The ThermoRG framework draws an explicit mapping between statistical physics and neural network training:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Thermodynamics / RG & Neural Networks \\
+\midrule
+Energy $E$ & Loss $L$ \\
+Temperature $T$ & Variance fluctuation $\gamma$ \\
+Critical temperature $T_c$ & Critical point $\gamma_c \approx 2.0$ \\
+RG flow (coarse-graining) & Stride-2 layers (spatial downsampling) \\
+Correlation function & $J_{\mathrm{topo}}$ (information flow uniformity) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\medskip
+Under this mapping, training corresponds to a thermal quench: the network starts ``hot'' ($\gamma \gg \gamma_c$) and cools toward the critical point. Normalization layers act as cooling mechanisms that reduce $\gamma$, while stride-2 layers perform RG blocking that suppresses the scaling exponent $\beta$.
+
 \subsection{Effective Dimension}
 
 For a weight matrix $W \in \mathbb{R}^{C_{\mathrm{out}} \times C_{\mathrm{in}}}$, the effective dimension is:
@@ -135,6 +153,9 @@ The topological correlation is:
 \boxed{J_{\mathrm{topo}}(D) \approx J_0 \cdot D^{-\alpha_{\mathrm{GELU}}/L}}, \quad \alpha_{\mathrm{GELU}} \approx 0.45
 \end{equation}
 This was validated on CIFAR-10 (5-seed averaged): depth=3 gives slope $-0.150$ vs theory $-0.150$ ($R^2=0.98$); depth=5 gives slope $-0.087$ vs theory $-0.090$ ($R^2=0.97$).
+
+\medskip
+\noindent\textbf{Note on notation:} $\alpha_{\mathrm{GELU}} \approx 0.45$ is the width-decay exponent of $J_{\mathrm{topo}}$, distinct from $\alpha_{\mathrm{type}}$ in the D-scaling law (which is a fitted prefactor with values $\sim 3.9$--$7.6$). These are different physical parameters with different dimensions.
 
 % See Appendix for derivation of $\alpha_{\mathrm{GELU}} \approx 0.45$ from GELU saturation.
 
@@ -186,10 +207,13 @@ Training moves weights from initialization, causing activation variance drift. T
 \end{equation}
 Large $\gamma$ = ``hot'' (large drift); small $\gamma$ = ``cold'' (stable propagation).
 
-Training dynamics undergoes a dynamical phase transition at the Edge of Stability (EOS) critical point $\gamma_c \approx 2.0$. Near this critical point, RG scaling theory gives:
+Training dynamics undergoes a dynamical phase transition at the Edge of Stability (EOS) critical point $\gamma_c \approx 2.0$. This critical point corresponds to the condition $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, where gradient signals neither explode nor vanish~\citep{cohen2021theory}. Near this critical point, RG scaling dimensions flow logarithmically with the distance from criticality, yielding a logarithmic dependence of $\beta$ on $\gamma$. Specifically, the scaling exponent $\beta$ varies as $\beta \sim \ln(\gamma/\gamma_c)$ because the relevant operators are marginally relevant near the phase transition. This is analogous to the logarithmic flow of coupling constants in near-critical statistical systems.
+
 \begin{equation}
 \boxed{\beta(\gamma) = 0.425 \cdot \ln\!\Bigl(\frac{\gamma}{\gamma_c}\Bigr) + 0.893}, \quad \gamma_c = 2.0
 \end{equation}
+
+% See Appendix for the full RG derivation of the $\beta(\gamma)$ cooling formula.
 
 \textbf{Validated across three orders of magnitude of $\gamma$:}
 \begin{center}
@@ -224,15 +248,39 @@ At $D \to \infty$: $E_{\mathrm{floor}} \approx 0.30 \cdot \gamma$ ($E_{\mathrm{t
 
 % See Appendix for the full derivation of the $E_{\mathrm{floor}}$ decomposition.
 
-\textbf{Key limitation:} Within fixed norm type, $J_{\mathrm{topo}}$ varies only $\sim 9\%$ across $D \in [32, 96]$, insufficient to independently fit the $B \cdot J_{\mathrm{topo}}^{\nu}$ term. The $J_{\mathrm{topo}}$ effect on $E_{\mathrm{floor}}$ is captured through $\gamma$ in our current data range.
+\textbf{Key limitation:} Within fixed norm type, $J_{\mathrm{topo}}$ varies only $\sim 9\%$ across $D \in [32, 96]$, insufficient to independently fit the $B \cdot J_{\mathrm{topo}}^{\nu}$ term. In our current data range, $J_{\mathrm{topo}}$ varies little across widths, so $\gamma$ serves as a proxy for the topology channel in experiments. The $J_{\mathrm{topo}}$ effect on $E_{\mathrm{floor}}$ is captured through $\gamma$, which co-varies with optimization difficulty across normalization types.
 
-\subsection{Stride-2 as RG Blocking}
+\subsection{Stride-2 as RG Blocking (Theoretical Prediction)}
 
-A convolutional layer with stride $s = 2$ performs a coarse-graining (block-spin) transformation on the feature map, analogous to Wilson's RG decimation. The scaling exponent is multiplicatively suppressed:
+A convolutional layer with stride $s = 2$ performs a coarse-graining (block-spin) transformation on the feature map, analogous to Wilson's RG decimation. The theoretical prediction is that the scaling exponent is multiplicatively suppressed:
 \begin{equation}
 \beta = \beta_0 \cdot (0.87)^{\,n_s}
 \end{equation}
-where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimension of the stride perturbation. This explains ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$.
+where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimension of the stride perturbation. This would explain ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$; however, note that this RG blocking interpretation awaits experimental validation in controlled settings (future work).
+
+\medskip
+\noindent\textbf{Summary of ThermoRG Objects.} Table~\ref{tab:thermorg-summary} summarizes the four central objects, their equations, physical meanings, and validation status.
+
+\begin{table}[htbp]
+\caption{Summary of ThermoRG Central Objects}
+\label{tab:thermorg-summary}
+\begin{center}
+\begin{tabular}{lcll}
+\toprule
+Concept & Equation & Physical Meaning & Validated \\
+\midrule
+$D_{\mathrm{eff}}$ & $\|W\|_F^2 / \lambda_{\max}^2$ & Effective degrees of freedom & Sec~\ref{sec:validation} \\
+$J_{\mathrm{topo}}$ & $\exp(-\frac{1}{L}\sum|\log\eta_l|)$ & Information flow uniformity & Sec~\ref{sec:validation} \\
+$\gamma$ & $\frac{1}{L}\sum|\ln(\sigma_{\mathrm{final}}/\sigma_{\mathrm{init}})|$ & Variance fluctuation (temperature) & Sec~\ref{sec:validation} \\
+$\beta(\gamma)$ & $0.425\ln(\gamma/\gamma_c) + 0.893$ & Scaling exponent vs variance & Sec~\ref{sec:validation} \\
+$\alpha_{\mathrm{type}}$ & Fitted prefactor in $L(D)$ & Architecture-type complexity & Sec~\ref{sec:validation} \\
+$\alpha_{\mathrm{GELU}}$ & $\approx 0.45$ & Width-decay exponent of $J_{\mathrm{topo}}$ & Sec~\ref{sec:validation} \\
+$E_{\mathrm{floor}}$ & $C/D + B \cdot J_{\mathrm{topo}}^{\nu}$ & Asymptotic irreducible error & Sec~\ref{sec:validation} \\
+Stride-2 RG & $\beta = \beta_0 \cdot (0.87)^{n_s}$ & Coarse-graining suppression & Future work \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
 
 % ==============================================================================
 % 3. EXPERIMENTAL VALIDATION
