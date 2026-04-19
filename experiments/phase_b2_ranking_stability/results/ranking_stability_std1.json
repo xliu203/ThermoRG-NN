@@ -1,0 +1,43 @@
+{
+  "experiment": "phase_b2_ranking_stability",
+  "init": "std=1.0",
+  "description": "Per-seed ranking stability of J_topo vs loss (Simple ConvNet, uniform topology)",
+  "config": {
+    "n_seeds": 5,
+    "n_epochs": 50,
+    "batch_size": 512,
+    "lr": 0.01,
+    "momentum": 0.9
+  },
+  "arch_summary": [
+    {"name": "ThermoNet-6-W32-BN", "width": 32, "depth": 6, "J_topo": 1.0, "mean_loss": 1.6069, "std_loss": 0.0272},
+    {"name": "ThermoNet-6-W64-BN", "width": 64, "depth": 6, "J_topo": 1.0, "mean_loss": 1.5173, "std_loss": 0.0166},
+    {"name": "ThermoNet-6-W96-BN", "width": 96, "depth": 6, "J_topo": 1.0, "mean_loss": 1.4941, "std_loss": 0.0092},
+    {"name": "ThermoNet-3-W64-BN", "width": 64, "depth": 3, "J_topo": 1.0, "mean_loss": 1.6867, "std_loss": 0.0111},
+    {"name": "ThermoNet-9-W48-BN", "width": 48, "depth": 9, "J_topo": 1.0, "mean_loss": 1.4924, "std_loss": 0.0164}
+  ],
+  "raw_results": {
+    "ThermoNet-6-W32-BN": {
+      "0": {"loss": 1.6340}, "1": {"loss": 1.6154}, "2": {"loss": 1.6338},
+      "3": {"loss": 1.5859}, "4": {"loss": 1.5655}
+    },
+    "ThermoNet-6-W64-BN": {
+      "0": {"loss": 1.5308}, "1": {"loss": 1.5062}, "2": {"loss": 1.5430},
+      "3": {"loss": 1.5068}, "4": {"loss": 1.5000}
+    },
+    "ThermoNet-6-W96-BN": {
+      "0": {"loss": 1.4969}, "1": {"loss": 1.4837}, "2": {"loss": 1.4959},
+      "3": {"loss": 1.4850}, "4": {"loss": 1.5091}
+    },
+    "ThermoNet-3-W64-BN": {
+      "0": {"loss": 1.6852}, "1": {"loss": 1.6786}, "2": {"loss": 1.6971},
+      "3": {"loss": 1.6716}, "4": {"loss": 1.7011}
+    },
+    "ThermoNet-9-W48-BN": {
+      "0": {"loss": 1.4956}, "1": {"loss": 1.5027}, "2": {"loss": 1.5076},
+      "3": {"loss": 1.4951}, "4": {"loss": 1.4610}
+    }
+  },
+  "total_time_minutes": 130.9,
+  "key_finding": "J_topo = 1.0 for ALL architectures (uniform topology). Spearman correlation undefined. Width and depth effects visible in loss data."
+}
