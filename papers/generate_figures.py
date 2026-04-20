@@ -117,18 +117,18 @@ ax.set_xticklabels([str(i+1) for i in range(5)])
 ax.legend(fontsize=8)
 ax.set_title('(b) HBO vs Random Top-5', fontsize=11, fontweight='bold')
 
-# Panel (c): HBO vs Random vs SynFlow — Round 2 comparison
+# Panel (c): HBO vs Random — Round 2 (50 epochs, CIFAR-10)
 ax = axes[2]
-methods = ['HBO', 'SynFlow', 'Random']
-losses = [0.703, 0.6268, 0.781]
-colors = ['steelblue', 'forestgreen', 'coral']
-bars = ax.bar(methods, losses, color=colors, alpha=0.8, width=0.5)
+methods = ['HBO', 'Random']
+losses = [0.3770, 0.4270]
+colors = ['steelblue', 'coral']
+bars = ax.bar(methods, losses, color=colors, alpha=0.8, width=0.4)
 ax.set_ylabel('Best Validation Loss\n(lower = better)', fontsize=9)
-ax.set_title('(c) Round 2: HBO vs SynFlow vs Random', fontsize=11, fontweight='bold')
-ax.set_ylim(0, 1.0)
+ax.set_title('(c) Round 2: HBO vs Random', fontsize=11, fontweight='bold')
+ax.set_ylim(0, 0.6)
 for bar, val in zip(bars, losses):
-    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-            f'{val:.3f}', ha='center', va='bottom', fontsize=9)
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+            f'{val:.4f}', ha='center', va='bottom', fontsize=9)
 ax.set_yticks([])
 ax.set_title('(c) SynFlow vs ThermoRG', fontsize=11, fontweight='bold')
 
