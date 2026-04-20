@@ -32,7 +32,7 @@
 ## Phase A: ThermoNet Training (87 runs, 9 architectures)
 
 **Purpose:** Validate D-scaling law E(D) = E_floor + C·D^(-β) on real CIFAR-10 training
-**Notebook:** `phase_a/notebooks/phase_a_v2.ipynb` (Kaggle)
+**Notebook:** `notebooks/phase_a_v2.ipynb` (Kaggle)
 **Data:** `phase_a_results.json`, `phase_a_summary.csv`
 
 ### D-Scaling Law Results
@@ -53,7 +53,7 @@ With normalization: BN, LN, None
 ## Phase 4A1: Stride-2 as RG Blocking
 
 **Purpose:** Test whether stride-2 layers act as RG blocking in the theory
-**Notebook:** `phase_4/phase_4a1_tpu.ipynb` (TPU)
+**Notebook:** `notebooks/phase_4a1_tpu.ipynb` (TPU)
 
 **Key finding: φ is task-dependent, NOT universal**
 
@@ -70,7 +70,7 @@ With normalization: BN, LN, None
 ## Phase S1: Cooling Theory β(γ)
 
 **Purpose:** Validate β(γ) = 0.425·ln(γ/γ_c) + 0.893, γ_c ≈ 2.0
-**Notebook:** `phase_s1/notebooks/phase_s1_tpu.ipynb` (TPU, 8 runs × 200 epochs)
+**Notebook:** `notebooks/phase_s1_tpu.ipynb` (TPU, 8 runs × 200 epochs)
 
 ### β(γ) Validated Across Regimes
 
@@ -202,10 +202,10 @@ Both methods independently converged to the same optimal architectures, providin
 
 | Notebook | Phase | Status |
 |----------|-------|--------|
-| `phase_a/notebooks/phase_a_v2.ipynb` | Phase A | Complete |
-| `phase_4/phase_4a1_tpu.ipynb` | Phase 4A1 | Complete |
-| `phase_s1/notebooks/phase_s1_tpu.ipynb` | Phase S1 | Complete |
-| `phase_b/notebooks/phase_b_hbo_revised.ipynb` | Phase B3 | Complete |
+| `notebooks/phase_a_v2.ipynb` | Phase A | Complete |
+| `notebooks/phase_4a1_tpu.ipynb` | Phase 4A1 | Complete |
+| `notebooks/phase_s1_tpu.ipynb` | Phase S1 | Complete |
+| `notebooks/phase_b_hbo_revised.ipynb` | Phase B3 | Complete |
 | `generate_figures.ipynb` | All | **Pending Kaggle run** |
 
 ---
