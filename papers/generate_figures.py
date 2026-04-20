@@ -117,25 +117,18 @@ ax.set_xticklabels([str(i+1) for i in range(5)])
 ax.legend(fontsize=8)
 ax.set_title('(b) HBO vs Random Top-5', fontsize=11, fontweight='bold')
 
-# Panel (c): HBO vs Random — Round 1 and Round 2 comparison
+# Panel (c): HBO vs Random vs SynFlow — Round 2 comparison
 ax = axes[2]
-rounds = ['Round 1\n(Random wins)', 'Round 2\n(HBO wins)']
-hbo_vals = [0.605, 0.703]
-random_vals = [0.386, 0.781]
-x = np.arange(2)
-width = 0.35
-bars1 = ax.bar(x - width/2, hbo_vals, width, label='HBO', color='steelblue', alpha=0.8)
-bars2 = ax.bar(x + width/2, random_vals, width, label='Random', color='coral', alpha=0.8)
-ax.set_ylabel('Best Validation Accuracy', fontsize=10)
-ax.set_xticks(x)
-ax.set_xticklabels(rounds, fontsize=9)
-ax.legend(fontsize=8)
+methods = ['HBO', 'SynFlow', 'Random']
+losses = [0.703, 0.6268, 0.781]
+colors = ['steelblue', 'forestgreen', 'coral']
+bars = ax.bar(methods, losses, color=colors, alpha=0.8, width=0.5)
+ax.set_ylabel('Best Validation Loss\n(lower = better)', fontsize=9)
+ax.set_title('(c) Round 2: HBO vs SynFlow vs Random', fontsize=11, fontweight='bold')
 ax.set_ylim(0, 1.0)
-ax.set_title('(c) HBO vs Random Comparison', fontsize=11, fontweight='bold')
-for bar in bars1:
-    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
-for bar in bars2:
-    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
+for bar, val in zip(bars, losses):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+            f'{val:.3f}', ha='center', va='bottom', fontsize=9)
 ax.set_yticks([])
 ax.set_title('(c) SynFlow vs ThermoRG', fontsize=11, fontweight='bold')
 
