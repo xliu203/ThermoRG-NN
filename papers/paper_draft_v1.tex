@@ -323,7 +323,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ across three orders of magnitude of $\gamma$. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses the confounding analysis and architecture search. Panel (a) shows the width-vs-topology confounding: wide networks dominate the width channel while narrow networks are excluded. Panel (b) shows the within-width partial correlation confirming the topology channel $r(J_{\mathrm{topo}}, L|W) = -0.794$ (p=0.006). Panel (c) illustrates the HBO$_{\mathrm{revised}}$ two-stage screening: Stage 1 selects top-30 architectures by $J_{\mathrm{topo}}$ within the wide group; Stage 2 fine-tunes the top-5 for 50 epochs. Panel (d) shows the final ranking comparison between HBO$_{\mathrm{revised}}$ and random search, where HBO$_{\mathrm{revised}}$ achieves 12\% lower best loss (0.703 vs 0.781).
+Figure~\ref{fig:confounding-hbo} addresses the confounding analysis and architecture search. Panel (a) shows the width-vs-topology confounding: wide networks dominate the width channel while narrow networks are excluded. Panel (b) shows the within-width partial correlation confirming the topology channel $r(J_{\mathrm{topo}}, L|W) = -0.794$ (p=0.006). Panel (c) illustrates the HBO$_{\mathrm{revised}}$ two-stage screening: Stage 1 selects top-30 architectures by $J_{\mathrm{topo}}$ within the wide group; Stage 2 fine-tunes the top-5 for 50 epochs. Panel (d) shows the final ranking comparison between HBO$_{\mathrm{revised}}$ and random search, where HBO$_{\mathrm{revised}}$ achieves 12\% lower best loss (0.377 vs 0.427).
 
 \begin{figure}[ht]
 \centering
@@ -393,13 +393,13 @@ Simply selecting architectures by highest $J_{\mathrm{topo}}$ loses to random se
 
 This reveals Simpson's paradox: simple correlation $r(J_{\mathrm{topo}}, L) = +0.588$ (misleading). Within fixed width groups: $r(J_{\mathrm{topo}}, L \mid W) = -0.794$ ($p=0.006$). Width and $J_{\mathrm{topo}}$ are anti-correlated ($r = -0.922$) --- wider networks have lower $J_{\mathrm{topo}}$ because of the GELU spectral effect.
 
-To jointly account for width and topology, we fit a unified scoring function: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$, trained on the 10-architecture dataset. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$, confirming that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss (fitted: $w_1 = -0.53$, $w_2 = -3.59$). However, because $J_{\mathrm{topo}}$ and $W$ are themselves anti-correlated ($r = -0.922$), the unified score cannot fully separate their independent effects.
+To jointly account for width and topology, we fit a unified scoring function: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$, trained on a dataset of 10 architecturally diverse configurations spanning widths $D \in \{24, 32, 48, 64, 96\}$ and depths $L \in \{3, 5, 6\}$ with various normalization types. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$, confirming that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss (fitted: $w_1 = -0.53$, $w_2 = -3.59$). However, because $J_{\mathrm{topo}}$ and $W$ are themselves anti-correlated ($r = -0.922$), the unified score cannot fully separate their independent effects.
 
 \subsection{HBO\_revised: Two-Stage Screening}
 
 To handle the width-topology confounding, we implement a two-stage screening procedure:
 \begin{enumerate}
-\item \textbf{Stage 1 (Capacity Filter):} width $\geq 48$ --- this is the minimum capacity for CIFAR-10; narrower networks (W=24,32) have insufficient degrees of freedom even if $J_{\mathrm{topo}}$ is high.
+\item \textbf{Stage 1 (Capacity Filter):} width $\geq 48$ --- empirically, networks narrower than 48 channels (W=24,32) achieve substantially higher loss even with favorable $J_{\mathrm{topo}}$ due to insufficient degrees of freedom for CIFAR-10 complexity.
 \item \textbf{Stage 2 (Topology Ranking):} within width groups, rank by $J_{\mathrm{topo}}$ HIGH --- higher $J_{\mathrm{topo}}$ indicates more uniform information flow and easier optimization.
 \item \textbf{L1:} train top-30 candidates for 10 epochs on 10\% data (fast coarse screening)
 \item \textbf{L2:} train top-5 candidates for 50 epochs on full data (fine-grained evaluation)
@@ -428,7 +428,7 @@ Mean & --- & 0.443 & --- & 0.563 \\
 
 \textbf{HBO\_revised Rank 1 (0.377) beats Random Rank 1 (0.427) by 12\%.} The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs --- comparable to VGG-11 in half the training time.
 
-Key insight: Both methods selected the same best configuration (96/6/BN/False), but HBO\_revised found it at Rank 1 while Random found it at Rank 1 as well. The improvement comes from HBO\_revised's top-5 mean (0.443) being much better than Random's (0.563) --- the two-stage screening consistently identifies better architectures in the top ranks.
+Key insight: Both methods identify the same optimal configuration (96/6/BN/False) as their best. However, HBO\_revised's top-5 mean (0.443) substantially outperforms Random's (0.563), demonstrating that the two-stage screening consistently identifies better architectures beyond the top-1.
 
 % ==============================================================================
 % 6. THERMORG-AL ALGORITHM
@@ -491,20 +491,20 @@ No training required. Cost: $\sim$1ms per architecture.
     \STATE Compute $J_{\mathrm{topo}}(\mathcal{A}_i)$ via power iteration (zero-cost)
     \STATE Train $\mathcal{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A}_i)$
 \ENDFOR
-\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression
-\STATE Fit scaling law for reference architecture $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
-\STATE Estimate $\beta(\gamma)$ cooling factors for norm types
+\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, width variation is small so the $C/D$ term is approximately constant)
+\STATE Fit D-scaling law $L(D) = \alpha_{\mathrm{ref}} \cdot D^{-\beta_{\mathrm{ref}}} + E_{\mathrm{ref}}$ on calibration configs $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
+\STATE Estimate $\beta(\gamma)$ via cooling law $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ using measured $\gamma$ for each norm type ($\gamma_c = 2.0$)
 
 \STATE \textbf{\% Stage 1: Zero-Cost Screening (Width First)}
 \STATE Compute $D(\mathcal{A})$ and $J_{\mathrm{topo}}(\mathcal{A})$ for all candidates (zero-cost)
-\STATE Filter: $D \geq D_{\min}$ (capacity constraint)
+\STATE Filter: $D \geq D_{\min}$ where $D_{\min} = 48$ (capacity constraint; narrower networks have insufficient degrees of freedom for CIFAR-10)
 \STATE Compute $E_{\mathrm{prior}}(\mathcal{A}) = a \cdot J_{\mathrm{topo}}(\mathcal{A}) + b$ for filtered candidates
 
 \STATE \textbf{\% Stage 2: $J_{\mathrm{topo}}$ Within Width Groups}
 \STATE Sort filtered candidates by $E_{\mathrm{prior}}$ (lower is better)
 \STATE Select top-$K = 30$ candidates
 \FOR{each selected candidate $\mathcal{A}$}
-    \STATE Train $\mathcal{A}$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A})$
+    \STATE Train $\mathcal{A}$ for 10 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A})$
 \ENDFOR
 
 \STATE \textbf{\% Stage 3: Full Training of Top Candidates}
