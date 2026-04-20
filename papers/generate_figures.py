@@ -13,7 +13,7 @@ plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.spines.top'] = False
 plt.rcParams['axes.spines.right'] = False
 
-OUT = './papers/figures/'
+OUT = './figures/'
 os.makedirs(OUT, exist_ok=True)
 
 # Load data
@@ -35,18 +35,14 @@ ax.set_ylabel('J_topo', fontsize=10)
 ax.legend(fontsize=7, loc='upper right')
 ax.set_title('(a) alpha vs J_topo', fontsize=11, fontweight='bold')
 
-# Panel (b): J_topo vs Accuracy (if available)
+# Panel (b): J_topo vs Parameter Count
 ax = axes[1]
-has_acc = df['actual_acc'].notna().sum() > 0
-if has_acc:
-    for name, g in df.groupby('group'):
-        ax.scatter(g['J_topo'], g['actual_acc'], label=name, alpha=0.8, s=60)
-    ax.set_xlabel('J_topo', fontsize=10)
-    ax.set_ylabel('Test Accuracy', fontsize=10)
-    ax.set_title('(b) J_topo vs Accuracy', fontsize=11, fontweight='bold')
-else:
-    ax.text(0.5, 0.5, 'Accuracy data\nnot available', ha='center', va='center', transform=ax.transAxes)
-    ax.set_title('(b) J_topo vs Accuracy', fontsize=11, fontweight='bold')
+for name, g in df.groupby('group'):
+    ax.scatter(g['params_M'], g['J_topo'], label=name.replace('G1','ThermoNet').replace('G2','ThermoBot').replace('G3','ReLUFurnace').replace('G4','Skip/Dense'), alpha=0.8, s=60)
+ax.set_xlabel('Parameters (M)', fontsize=10)
+ax.set_ylabel('J_topo', fontsize=10)
+ax.set_title('(b) Params vs J_topo', fontsize=11, fontweight='bold')
+ax.legend(fontsize=7)
 
 # Panel (c): eta_product vs J_topo (colored by depth)
 ax = axes[2]
@@ -121,15 +117,25 @@ ax.set_xticklabels([str(i+1) for i in range(5)])
 ax.legend(fontsize=8)
 ax.set_title('(b) HBO vs Random Top-5', fontsize=11, fontweight='bold')
 
-# Panel (c): SynFlow vs ThermoRG ranking
+# Panel (c): HBO vs Random — Round 1 and Round 2 comparison
 ax = axes[2]
-synflow_configs = ['TN-6-W96', 'TN-5-W96', 'TN-3-W96', 'TN-6-W64', 'TN-5-W64']
-thermo_configs = ['96/6', '64/6', '48/6', '64/5', '48/5']
-# Show overlap
-common = set(synflow_configs[:5]) & set(thermo_configs)
-ax.text(0.5, 0.7, f'4/5 configs\nin common', ha='center', va='center', transform=ax.transAxes, fontsize=12)
-ax.text(0.5, 0.4, 'Both methods find\nsimilar architectures', ha='center', va='center', transform=ax.transAxes, fontsize=10)
-ax.set_xticks([])
+rounds = ['Round 1\n(Random wins)', 'Round 2\n(HBO wins)']
+hbo_vals = [0.605, 0.703]
+random_vals = [0.386, 0.781]
+x = np.arange(2)
+width = 0.35
+bars1 = ax.bar(x - width/2, hbo_vals, width, label='HBO', color='steelblue', alpha=0.8)
+bars2 = ax.bar(x + width/2, random_vals, width, label='Random', color='coral', alpha=0.8)
+ax.set_ylabel('Best Validation Accuracy', fontsize=10)
+ax.set_xticks(x)
+ax.set_xticklabels(rounds, fontsize=9)
+ax.legend(fontsize=8)
+ax.set_ylim(0, 1.0)
+ax.set_title('(c) HBO vs Random Comparison', fontsize=11, fontweight='bold')
+for bar in bars1:
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
+for bar in bars2:
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
 ax.set_yticks([])
 ax.set_title('(c) SynFlow vs ThermoRG', fontsize=11, fontweight='bold')
 
