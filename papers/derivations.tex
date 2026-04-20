@@ -48,7 +48,7 @@ Given $\lambda_{\max} \propto D^{0.52}$ (empirical GELU saturation) and $\|W\|_F
 D_{\mathrm{eff}} = \frac{\|W\|_F^2}{\lambda_{\max}^2} \propto \frac{D}{D^{1.04}} = D^{-0.04}.
 \end{equation}
 
-This naive result contradicts the empirical $D_{\mathrm{eff}} \propto D^{0.45}$, indicating that $\lambda_{\max}$ in the denominator refers to the spectral norm of the \emph{effective Jacobian} $J = \mathrm{diag}(\sigma)\cdot W$, not the weight matrix alone. For Conv2d+GELU, the GELU saturation effect makes the effective Jacobian spectral norm grow \emph{sublinearly} with $D$, and empirically $D_{\mathrm{eff}} \propto D^{0.45}$. The token-mixing correction factor $\tau_{\mathrm{token}} \approx 0.94$ accounts for spatial correlations in convolutional feature maps (structured geometry reduces effective degrees of freedom). This gives:
+This naive result contradicts the empirical $D_{\mathrm{eff}} \propto D^{0.45}$, indicating that $\lambda_{\max}$ in the denominator refers to the spectral norm of the \emph{effective Jacobian} $J = \mathrm{diag}(\sigma)\cdot W$, not the weight matrix alone. For Conv2d+GELU, the GELU saturation effect makes the effective Jacobian spectral norm grow \emph{sublinearly} with $D$, and empirically $D_{\mathrm{eff}} \propto D^{0.45}$. The token-mixing correction factor $\tau_{\mathrm{token}} \approx 0.94$ accounts for spatial correlations in convolutional feature maps (structured geometry reduces effective degrees of freedom); this factor is estimated from empirical measurements of feature-map spatial correlation exponents. This gives:
 \begin{equation}
 \boxed{\alpha_{\mathrm{GELU}} = 0.45 = -L \cdot \frac{d\ln J_{\mathrm{topo}}}{d\ln D} \quad (\text{from } D_{\mathrm{eff}} \propto D^{0.45})}
 \end{equation}
