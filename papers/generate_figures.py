@@ -30,10 +30,10 @@ plt.subplots_adjust(wspace=0.35)
 ax = axes[0]
 for name, g in df.groupby('group'):
     ax.scatter(g['alpha'], g['J_topo'], label=name.replace('G1','ThermoNet').replace('G2','ThermoBot').replace('G3','ReLUFurnace').replace('G4','Skip/Dense'), alpha=0.8, s=60)
-ax.set_xlabel(r'Scaling exponent $\alpha$', fontsize=10)
-ax.set_ylabel(r'$J_{\mathrm{topo}}$', fontsize=10)
+ax.set_xlabel('Scaling exponent alpha', fontsize=10)
+ax.set_ylabel('J_topo', fontsize=10)
 ax.legend(fontsize=7, loc='upper right')
-ax.set_title(r'(a) $\alpha$ vs $J_{\mathrm{topo}}$', fontsize=11, fontweight='bold')
+ax.set_title('(a) alpha vs J_topo', fontsize=11, fontweight='bold')
 
 # Panel (b): J_topo vs Accuracy (if available)
 ax = axes[1]
@@ -41,20 +41,20 @@ has_acc = df['actual_acc'].notna().sum() > 0
 if has_acc:
     for name, g in df.groupby('group'):
         ax.scatter(g['J_topo'], g['actual_acc'], label=name, alpha=0.8, s=60)
-    ax.set_xlabel(r'$J_{\mathrm{topo}}$', fontsize=10)
+    ax.set_xlabel('J_topo', fontsize=10)
     ax.set_ylabel('Test Accuracy', fontsize=10)
-    ax.set_title(r'(b) $J_{\mathrm{topo}}$ vs Accuracy', fontsize=11, fontweight='bold')
+    ax.set_title('(b) J_topo vs Accuracy', fontsize=11, fontweight='bold')
 else:
     ax.text(0.5, 0.5, 'Accuracy data\nnot available', ha='center', va='center', transform=ax.transAxes)
-    ax.set_title(r'(b) $J_{\mathrm{topo}}$ vs Accuracy', fontsize=11, fontweight='bold')
+    ax.set_title('(b) J_topo vs Accuracy', fontsize=11, fontweight='bold')
 
 # Panel (c): eta_product vs J_topo (colored by depth)
 ax = axes[2]
 for name, g in df.groupby('group'):
     scatter = ax.scatter(np.log(g['eta_product']), g['J_topo'], c=g['num_layers'], cmap='viridis', label=name, alpha=0.8, s=60)
-ax.set_xlabel(r'$\log(\eta_{\mathrm{product}})$', fontsize=10)
-ax.set_ylabel(r'$J_{\mathrm{topo}}$', fontsize=10)
-ax.set_title(r'(c) $\log(\eta)$ vs $J_{\mathrm{topo}}$', fontsize=11, fontweight='bold')
+ax.set_xlabel('log(eta_product)', fontsize=10)
+ax.set_ylabel('J_topo', fontsize=10)
+ax.set_title('(c) log(eta) vs J_topo', fontsize=11, fontweight='bold')
 cbar = plt.colorbar(scatter, ax=ax)
 cbar.set_label('Layers', fontsize=8)
 
@@ -100,8 +100,8 @@ ax = axes[0]
 for name, g in df.groupby('group'):
     ax.scatter(g['params_M'], g['J_topo'], label=name, alpha=0.8, s=60)
 ax.set_xlabel('Parameters (M)', fontsize=10)
-ax.set_ylabel(r'$J_{\mathrm{topo}}$', fontsize=10)
-ax.set_title(r'(a) Width vs $J_{\mathrm{topo}}$ confounding', fontsize=11, fontweight='bold')
+ax.set_ylabel('J_topo', fontsize=10)
+ax.set_title('(a) Width vs J_topo confounding', fontsize=11, fontweight='bold')
 ax.legend(fontsize=7)
 
 # Panel (b): HBO vs Random ranking
