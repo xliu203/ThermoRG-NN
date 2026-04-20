@@ -205,7 +205,7 @@ Training moves weights from initialization, causing activation variance drift. T
 \begin{equation}
 \gamma = \frac{1}{L}\sum_{l=1}^{L}\Bigl|\ln\frac{\sigma_{\mathrm{final}}^{(l)}}{\sigma_{\mathrm{init}}^{(l)}}\Bigr|
 \end{equation}
-Large $\gamma$ = ``hot'' (large drift); small $\gamma$ = ``cold'' (stable propagation).
+Large $\gamma$ indicates substantial drift from initialization (``hot'' training); small $\gamma$ indicates stable variance propagation (``cold'' training).
 
 Training dynamics undergoes a dynamical phase transition at the Edge of Stability (EOS) critical point $\gamma_c \approx 2.0$. This critical point corresponds to the condition $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, where gradient signals neither explode nor vanish~\citep{cohen2021theory}. Near this critical point, RG scaling dimensions flow logarithmically with the distance from criticality, yielding a logarithmic dependence of $\beta$ on $\gamma$. Specifically, the scaling exponent $\beta$ varies as $\beta \sim \ln(\gamma/\gamma_c)$ because the relevant operators are marginally relevant near the phase transition. This is analogous to the logarithmic flow of coupling constants in near-critical statistical systems.
 
@@ -243,11 +243,11 @@ E_{\mathrm{floor}} = \underbrace{\frac{C}{D}}_{\text{capacity (width)}} + \under
 \end{equation}
 The \emph{width channel} dominates across architectures ($r(W, L) = -0.829$); the \emph{topology channel} dominates \emph{within} width groups (partial correlation $r(J_{\mathrm{topo}}, L \mid W) = -0.794$, $p = 0.006$).
 
-Joint fit on CIFAR-10 (8 data points, $R^2 = 0.997$):
+Joint fit on CIFAR-10 (8 architecture-width combinations, $R^2 = 0.997$):
 \begin{equation}
 L(D, \gamma) = 5.43 \cdot D^{-\beta(\gamma)} - 0.21 + 0.30 \cdot \gamma
 \end{equation}
-At $D \to \infty$: $E_{\mathrm{floor}} \approx 0.30 \cdot \gamma$ ($E_{\mathrm{task}} \approx 0$ on CIFAR-10).
+where $-0.21$ is a small fitted offset from the linear regression and the asymptotic error floor scales as $E_{\mathrm{floor}} \approx 0.30 \cdot \gamma$ (with $E_{\mathrm{task}} \approx 0$ on CIFAR-10).
 
 See Appendix~\ref{sec:efloor-derivation} for the full derivation of the $E_{\mathrm{floor}}$ decomposition.
 
