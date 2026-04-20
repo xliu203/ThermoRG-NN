@@ -86,7 +86,7 @@ ThermoRG-NN/
 │   ├── cooling.py             # Cooling factor φ(γ)
 │   └── j_topo.py              # J_topo with stride correction
 │
-├── theory/
+├── legacy/
 │   └── THEORY.md              # Full theory framework
 │
 ├── experiments/
