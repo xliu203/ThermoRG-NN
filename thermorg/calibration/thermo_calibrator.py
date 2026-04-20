@@ -9,7 +9,7 @@ The scaling law:
     L(D) = α · D^(-β) + E_floor
 
 where:
-    E_floor = C/D + B · J_topo^ν
+    E_floor = E_task + C/D − B · J_topo^ν
 
 Input:
     - 8 calibration architectures with their early training losses
@@ -53,18 +53,16 @@ class CalibrationResult:
     # β parameter (depth exponent / cooling law)
     beta: float
     
-    # E_floor decomposition: E_floor = C/D + B·J_topo^ν
+    # E_floor decomposition: E_floor = E_task + C/D − B·J_topo^ν
     C: float
     B: float
     nu: float = 1.0  # exponent on J_topo
-    
-    # R² goodness of fit
-    r2_E_floor: float
-    r2_D_scaling: float
-    
-    # Calibration metadata
     n_architectures: int = 8
     calibration_epochs: int = 200
+    
+    # R² goodness of fit (must come after fields with defaults)
+    r2_E_floor: float = 0.0
+    r2_D_scaling: float = 0.0
     
     def __repr__(self) -> str:
         return (
@@ -606,3 +604,36 @@ def create_calibrator_and_calibrate() -> CalibrationResult:
     calibration_data = get_default_calibration_data()
     result = calibrator.calibrate(calibration_data)
     return result
+
+# =============================================================================
+# CIFAR-10 Calibration Preset
+# =============================================================================
+
+def get_cifar10_calibration() -> dict:
+    """
+    Return CIFAR-10 calibrated parameters for AnalyticalPredictor.
+    
+    These values were calibrated on Phase B2 CIFAR-10 data and should
+    ONLY be used for CIFAR-10 experiments. For other datasets, use
+    ThermoCalibrator to calibrate per-dataset.
+    
+    Usage:
+        >>> from thermorg.calibration import get_cifar10_calibration
+        >>> cal = get_cifar10_calibration()
+        >>> predictor = AnalyticalPredictor(**cal)
+        >>> loss = predictor.predict(width=64, depth=5, J_topo=0.75, norm_type='bn')
+    
+    Returns:
+        Dict with E_task, B, C, alpha_bn, alpha_none, beta, gamma_c, nu, dataset
+    """
+    return {
+        'E_task': 0.35,     # Task-intrinsic irreducible error for CIFAR-10
+        'B': 0.10,          # J_topo sensitivity (calibrated on CIFAR-10)
+        'C': 0.0,           # Finite-width correction
+        'alpha_bn': 0.45,  # α for BatchNorm networks
+        'alpha_none': 0.68, # α for no-normalization networks
+        'beta': 0.85,       # Depth exponent
+        'gamma_c': 1.0,     # Critical initialization quality
+        'nu': 1.0,         # J_topo exponent in E_floor
+        'dataset': 'cifar10',
+    }

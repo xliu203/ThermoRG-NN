@@ -11,6 +11,7 @@ from thermorg.calibration.thermo_calibrator import (
     ArchitectureSpec,
     get_default_calibration_data,
     create_calibrator_and_calibrate,
+    get_cifar10_calibration,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     'ArchitectureSpec',
     'get_default_calibration_data',
     'create_calibrator_and_calibrate',
+    'get_cifar10_calibration',
 ]
