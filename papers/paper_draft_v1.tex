@@ -429,7 +429,7 @@ Best & --- & \textbf{0.703} & --- & 0.781 \\
 
 \textbf{HBO\_revised achieves 10\% lower best loss than Random (0.703 vs 0.781).} The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
 
-Key insight: HBO\_revised's top-5 worst case (~0.90) outperforms Random's top-4 (~0.90), demonstrating that the two-stage screening consistently identifies better architectures through topology-aware selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
+Key insight: HBO\_revised's top-5 worst case (~0.90) matches Random's top-4 (~0.90), demonstrating that even HBO's least preferred top-5 architecture performs as well as Random's second-best. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
 
 % ==============================================================================
 % 6. THERMORG-AL ALGORITHM
