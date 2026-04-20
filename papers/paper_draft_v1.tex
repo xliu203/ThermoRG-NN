@@ -259,7 +259,7 @@ A convolutional layer with stride $s = 2$ performs a coarse-graining (block-spin
 \begin{equation}
 \beta = \beta_0 \cdot (0.87)^{\,n_s}
 \end{equation}
-where $n_s$ is the number of stride-2 layers and $0.87$ is the RG scaling dimension of the stride perturbation. The factor 0.87 is the estimated RG scaling dimension of the stride perturbation, derived from theoretical RG analysis (see Appendix~\ref{sec:stride-derivation}). This would explain ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$; however, note that this RG blocking interpretation awaits experimental validation in controlled settings (future work).
+where $n_s$ is the number of stride-2 layers and $\phi = 0.87$ is the RG scaling factor of the stride perturbation (corresponding to scaling dimension $\Delta_{\mathrm{stride}} \approx 0.20$), derived from theoretical RG analysis (see Appendix~\ref{sec:stride-derivation}). This would explain ResNet-18's $\beta \approx 0.28$ despite its high $J_{\mathrm{topo}}$; however, note that this RG blocking interpretation awaits experimental validation in controlled settings (future work).
 
 \medskip
 \noindent\textbf{Summary of ThermoRG Objects.} Table~\ref{tab:thermorg-summary} summarizes the four central objects, their equations, physical meanings, and validation status.
@@ -311,7 +311,7 @@ LayerNorm & 3.9 & 0.219 & --- & 0.999 \\
 \end{tabular}
 \end{center}
 
-The cooling equation $\beta(\gamma)$ predicts $\beta$ from measured $\gamma$ with $<2\%$ error across three orders of magnitude of $\gamma$ (see Section 2.4). BatchNorm reduces $\gamma$ from 3.21 to 2.29, trading width-scaling efficiency ($\beta$: 1.117 $\to$ 0.950) for asymptotic error improvement ($E_{\mathrm{floor}}$: 0.777 $\to$ 0.466).
+The cooling equation $\beta(\gamma)$ predicts $\beta$ from measured $\gamma$ with $<2\%$ error across three orders of magnitude of $\gamma$ (see Section 2.4). BatchNorm reduces $\gamma$ from 3.39 to 2.29, trading width-scaling efficiency ($\beta$: 1.117 $\to$ 0.950) for asymptotic error improvement ($E_{\mathrm{floor}}$: 0.777 $\to$ 0.466).
 
 % ==============================================================================
 % 4. EXTENSION TO SKIP AND DENSE CONNECTIONS

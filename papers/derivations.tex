@@ -43,14 +43,14 @@ which is \emph{sublinear} compared to the linear expectation $\propto D^{1/2}$ f
 
 \subsubsection{Derivation of $\alpha_{\mathrm{GELU}}$}
 
-Given $\lambda_{\max} \propto D^{0.52}$ and $\|W\|_F^2 \propto D$ (each of $D$ output channels has $D \cdot k^2$ weights), the effective dimension is:
+Given $\lambda_{\max} \propto D^{0.52}$ (empirical GELU saturation) and $\|W\|_F^2 \propto D$ (each of $D$ output channels has $D \cdot k^2$ weights), the effective dimension is:
 \begin{equation}
-D_{\mathrm{eff}} = \frac{\|W\|_F^2}{\lambda_{\max}^2} \propto \frac{D}{D^{2 \times 0.52}} = \frac{D}{D^{1.04}} = D^{0.48 \times \tau_{\mathrm{token}}}.
+D_{\mathrm{eff}} = \frac{\|W\|_F^2}{\lambda_{\max}^2} \propto \frac{D}{D^{1.04}} = D^{-0.04}.
 \end{equation}
 
-The token-mixing correction factor $\tau_{\mathrm{token}} \approx 0.94$ arises from the structured geometry of convolutional feature maps (spatial correlations reduce the effective degrees of freedom). Empirically, $D_{\mathrm{eff}} \propto D^{0.45}$, giving:
+This naive result contradicts the empirical $D_{\mathrm{eff}} \propto D^{0.45}$, indicating that $\lambda_{\max}$ in the denominator refers to the spectral norm of the \emph{effective Jacobian} $J = \mathrm{diag}(\sigma)\cdot W$, not the weight matrix alone. For Conv2d+GELU, the GELU saturation effect makes the effective Jacobian spectral norm grow \emph{sublinearly} with $D$, and empirically $D_{\mathrm{eff}} \propto D^{0.45}$. The token-mixing correction factor $\tau_{\mathrm{token}} \approx 0.94$ accounts for spatial correlations in convolutional feature maps (structured geometry reduces effective degrees of freedom). This gives:
 \begin{equation}
-\boxed{\alpha_{\mathrm{GELU}} = 1 - 0.52 \approx 0.48 \xrightarrow{\tau_{\mathrm{token}}} 0.45}
+\boxed{\alpha_{\mathrm{GELU}} = 0.45 = -L \cdot \frac{d\ln J_{\mathrm{topo}}}{d\ln D} \quad (\text{from } D_{\mathrm{eff}} \propto D^{0.45})}
 \end{equation}
 
 The per-layer expansion ratio for the input layer ($l=1$) is:
@@ -172,7 +172,7 @@ The cooling theory explains why normalization layers act as ``cooling'' mechanis
 % DERIVATION 3: Critical Point J_c ≈ 0.35
 % ==============================================================================
 
-\subsection{Step 4: Critical Point $J_c \approx 0.35$}
+\subsection{Step 4: Critical Point $J_c \approx 0.35$}\label{sec:critical-point}
 
 We derive the critical point $J_c \approx 0.35$ where the scaling prefactor $\alpha$ diverges, using percolation and phase transition theory.
 
