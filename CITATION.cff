@@ -4,8 +4,7 @@ type: software
 title: "ThermoRG-NN: Thermogeometric Neural Architecture Search"
 abstract: "A unified framework for neural network architecture design based on spectral momentum conservation and thermodynamics principles."
 authors:
-  - family-names: "Liu"
-    given-names: "Leo"
+  - name: "Xiaonan Liu"
     orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
 version: "0.1.0"
 date-released: 2026-03-28
