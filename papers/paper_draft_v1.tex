@@ -199,7 +199,7 @@ LayerNorm & 0.41 & 0.219 & --- & 0.999 \\
 \end{center}
 \medskip
 
-\subsection{Cooling Theory: $\beta(\gamma)$}
+\subsection{Cooling Theory: $\beta(\gamma)$}\label{sec:cooling-theory}
 
 Training moves weights from initialization, causing activation variance drift. The variance fluctuation is:
 \begin{equation}
@@ -293,7 +293,7 @@ Stride-2 RG & $\beta = \beta_0 \cdot (0.87)^{n_s}$ & Coarse-graining suppression
 All experiments use plain convolutional networks with different normalization layers (BatchNorm, LayerNorm, and no normalization) as controlled building blocks. This validates the ThermoRG framework's core predictions before applying to architecture search.
 
 \subsection{Setup}
-All experiments on CIFAR-10 (TPU, 200 epochs, cosine annealing, SGD+momentum=0.9) unless noted. ThermoNet architectures use Conv2d+GELU. $J_{\mathrm{topo}}$ computed via PI-20 on random initialization (zero-cost).
+All experiments on CIFAR-10 (TPU, 200 epochs, cosine annealing, SGD+momentum=0.9) unless noted. ThermoNet architectures use Conv2d+GELU with widths $D \in \{32, 48, 64, 96\}$. $J_{\mathrm{topo}}$ computed via PI-20 on random initialization (zero-cost).
 
 \subsection{Results: D-Scaling Validation}
 
@@ -310,8 +310,12 @@ LayerNorm & 3.9 & 0.219 & --- & 0.999 \\
 \bottomrule
 \end{tabular}
 \end{center}
+{\small * LayerNorm does not converge to a clear asymptotic floor within the width range studied ($D \in \{32,48,64,96\}$).}
 
-The cooling equation $\beta(\gamma)$ predicts $\beta$ from measured $\gamma$ with $<2\%$ error across three orders of magnitude of $\gamma$ (see Section 2.4). BatchNorm reduces $\gamma$ from 3.39 to 2.29, trading width-scaling efficiency ($\beta$: 1.117 $\to$ 0.950) for asymptotic error improvement ($E_{\mathrm{floor}}$: 0.777 $\to$ 0.466).
+The cooling equation $\beta(\gamma)$ predicts $\beta$ from measured $\gamma$ with $<2\%$ error across three orders of magnitude of $\gamma$ (see Section~\ref{sec:cooling-theory}). BatchNorm reduces $\gamma$ from 3.39 to 2.29, trading width-scaling efficiency ($\beta$: 1.117 $\to$ 0.950) for asymptotic error improvement ($E_{\mathrm{floor}}$: 0.777 $\to$ 0.466).
+
+\medskip
+See Section~\ref{sec:framework} for validation of $J_{\mathrm{topo}}(D)$ width-dependence and the $E_{\mathrm{floor}}$ two-channel decomposition.
 
 % ==============================================================================
 % 4. EXTENSION TO SKIP AND DENSE CONNECTIONS
