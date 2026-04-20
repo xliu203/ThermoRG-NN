@@ -1,1 +1,0 @@
-# ThermoRG-NN test suite

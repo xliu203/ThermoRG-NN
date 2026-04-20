@@ -17,7 +17,7 @@ The loss L for a network with depth D and topology quality J_topo is:
 
 where the floor energy decomposes as:
 
-    E_floor = C/D + B · J_topo^ν
+    E_floor = C/D − B · (1 − J_topo^ν)
 
 The depth exponent β follows a "cooling law" depending on the
 network's initialization quality γ:
@@ -53,7 +53,7 @@ DEFAULT_PARAMS = {
     'alpha_none': 0.68,   # α for networks without normalization
     'beta': 0.85,         # depth exponent
     'gamma_c': 1.0,       # critical initialization quality
-    'C': 0.0,             # C in E_floor = C/D + B·J_topo^ν
+    'C': 0.0,             # C in E_floor = C/D − B·(1−J_topo^ν)
     'B': 0.35,            # B coefficient
     'nu': 1.0,            # exponent on J_topo
 }
@@ -108,7 +108,7 @@ def E_floor_decomposition(
         return float('inf')
     
     term1 = C / D_eff if D_eff > 0 else 0.0
-    term2 = B * (J_topo ** nu)
+    term2 = B * (1 - J_topo ** nu)
     
     return term1 + term2
 
