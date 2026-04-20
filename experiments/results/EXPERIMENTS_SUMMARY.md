@@ -139,6 +139,32 @@ HBO selected narrow-deep nets (24/6, 32/6) with high J_topo but low width (capac
 
 **Golden architecture identified:** 深层(5-6) + 极宽(64-96) + BatchNorm + NoSkip
 
+### Detailed L2 Top-5 Results (50 epochs)
+
+**Random L2 top-5:**
+
+| Config             | Loss   | Acc    |
+| ------------------ | ------ | ------ |
+| W=64,D=6,BN,NoSkip | 0.4270 | 0.8515 |
+| W=96,D=5,BN,NoSkip | 0.4451 | 0.8477 |
+| W=64,D=6,BN,Skip   | 0.5388 | 0.8149 |
+| W=96,D=6,LN,NoSkip | 0.5405 | 0.8157 |
+| W=24,D=6,BN,NoSkip | 0.6643 | 0.7700 |
+
+**HBO L2 top-5:**
+
+| Config             | Loss   | Acc    |
+| ------------------ | ------ | ------ |
+| W=96,D=6,BN,NoSkip | 0.3770 | 0.8744 |
+| W=64,D=6,BN,NoSkip | 0.4401 | 0.8486 |
+| W=96,D=5,BN,NoSkip | 0.4351 | 0.8514 |
+| W=96,D=6,BN,Skip   | 0.4582 | 0.8440 |
+| W=64,D=5,BN,NoSkip | 0.5073 | 0.8277 |
+
+**Result:** HBO best=0.3770 vs Random best=0.4270 — **HBO wins by Δ=0.050**
+
+*Note: Comparison is fair — each selects top-5 from its own candidate set, then reports the best among those 5.*
+
 ### Key Insight
 J_topo works not through "highest J_topo wins" directly, but through multi-fidelity screening + fine-tune re-evaluation. Width-first is essential to avoid Simpson's paradox.
 
