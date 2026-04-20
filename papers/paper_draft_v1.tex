@@ -353,9 +353,9 @@ Figure~\ref{fig:confounding-hbo} addresses the confounding analysis and architec
 
 To illustrate how the ThermoRG framework extends beyond plain ConvNets, we compute $J_{\mathrm{topo}}$ for standard architectures with skip connections (ResNet) and dense connections (DenseNet). These results are observational, demonstrating the generality of the $J_{\mathrm{topo}}$ metric.
 
-Skip connections (e.g., ResNet): Each residual block $y = x + \mathcal{F}(x)$ provides a shortcut that reduces effective depth. For $J_{\mathrm{topo}}$ computation, each residual block is treated as a single transformation, giving ResNet an effective depth equal to the number of blocks (not conv layers). This explains why ResNet achieves $J_{\mathrm{topo}} = 0.69$ --- higher than typical plain ConvNets of similar width (e.g., ThermoNet-6 W=64 has $J_{\mathrm{topo}}=0.807$) --- despite having more total convolutions.
+Skip connections (e.g., ResNet): Each residual block $y = x + \mathcal{F}(x)$ provides a shortcut that reduces effective depth. For $J_{\mathrm{topo}}$ computation, each residual block is treated as a single transformation, giving ResNet an effective depth equal to the number of blocks (not conv layers). This explains why ResNet achieves $J_{\mathrm{topo}} = 0.69$ --- higher than plain ConvNets of similar depth (e.g., VGG-11 with $J_{\mathrm{topo}}=0.65$) --- despite having more total convolutions.
 
-Dense connections (e.g., DenseNet): DenseNet's dense concatenation creates a unique information flow pattern where each layer has access to all previous features. Using cumulative channel tracking (tracking the cumulative channel count $C_{\mathrm{cum}}$ after each dense block), we compute $\eta_l = (C_{\mathrm{cum}} + k) / C_{\mathrm{cum}} \approx 1$ within dense blocks, giving DenseNet the highest $J_{\mathrm{topo}}$ among standard architectures.
+Dense connections (e.g., DenseNet): DenseNet's dense concatenation creates a unique information flow pattern where each layer has access to all previous features. Using cumulative channel tracking (tracking the cumulative channel count $C_{\mathrm{cum}}$ after each dense block), we compute $\eta_l = (C_{\mathrm{cum}} + k) / C_{\mathrm{cum}} \approx 1$ within dense blocks, where $k$ is the channel growth rate per dense block, giving DenseNet the highest $J_{\mathrm{topo}}$ among standard architectures.
 
 \begin{center}
 \begin{tabular}{lccccc}
@@ -371,7 +371,7 @@ ThermoNet-6 (W=64) & 0.807 & 0.6M & 6 & 80.2\% (200ep) \\
 \bottomrule
 \end{tabular}
 \end{center}
-{\small * ThermoNet-6 shows inverse width-dependence of $J_{\mathrm{topo}}$ (narrower W=64 has higher $J_{\mathrm{topo}}$), consistent with the GELU spectral effect (Sec.~2).}
+{\small * ThermoNet-6 shows inverse width-dependence of $J_{\mathrm{topo}}$ (narrower W=64 has higher $J_{\mathrm{topo}}$), consistent with the GELU spectral effect (see Sec.~2).}
 
 \textbf{Observational findings (not part of core validation):}
 \begin{itemize}
