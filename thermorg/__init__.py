@@ -1,129 +1,38 @@
-#!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
 """
-ThermoRG - Thermodynamic Theory of Neural Architecture Scaling
-==============================================================
+ThermoRG: Thermodynamic Theory of Neural Architecture Scaling
+============================================================
 
-A core library for analyzing neural network architectures using
-thermodynamic principles and manifold geometry.
+A clean 3-module framework for zero-cost architecture scoring and loss prediction.
 
-Core Modules:
--------------
-- j_topo:    J_topo computation with stride correction
-- scaling:   D-scaling law fitting and predictions
-- cooling:   Cooling factor φ(γ) computation
-- utils:     Common utilities (manifold estimation, etc.)
-
-Quick Start:
------------
-    >>> from thermorg import compute_J_topo, fit_scaling_law
-    >>> import torch.nn as nn
-    >>> model = nn.Sequential(nn.Conv2d(3, 64, 3, padding=1),
-    ...                      nn.Conv2d(64, 128, 3, stride=2, padding=1))
-    >>> J, etas = compute_J_topo(model)
-    >>> print(f"J_topo = {J:.4f}")
-
-Reference: ThermoRG Theory Framework v8
+Modules:
+- topology_calculator: J_topo computation via Power Iteration
+- analytical_predictor: Pure mathematical loss prediction
+- calibration: Parameter calibration from training data
 """
 
-from __future__ import annotations
-
-__version__ = '0.2.0'
-__author__ = 'ThermoRG Team'
-
-# Core API
-from .j_topo import (
+from thermorg.topology_calculator import (
     compute_J_topo,
-    compute_D_eff,
     compute_D_eff_power_iteration,
-    compute_D_eff_total,
-    count_parameters,
-    get_layer_weights_for_J_topo,
+    compute_resblock_eff_W,
 )
 
-from .scaling import (
-    scaling_law,
-    fit_scaling_law,
+from thermorg.analytical_predictor import (
+    AnalyticalPredictor,
+    D_scaling_law,
+    E_floor_decomposition,
+    cooling_law,
     predict_loss,
-    compute_optimal_temperature,
-    unified_scaling_law,
-    beta_gamma,
-    gamma_ratio_effect,
-    compute_gamma_critical,
 )
 
-from .cooling import (
-    cooling_factor_linear,
-    cooling_factor_exponential,
-    cooling_factor_power_law,
-    cooling_factor_cosine,
-    get_cooling_factor,
-    phi_cooling,
-    phi_ratio_BN,
-    phi_from_delta,
-    phi,
-    beta_gamma,
-    phi_gamma_ratio,
-)
-
-from .scaling import (
-    beta_gamma as beta_gamma_scaling,
-    gamma_ratio_effect,
-    compute_gamma_critical,
-)
-
-from .utils import (
-    estimate_d_manifold,
-    compute_capacity_bound,
-    get_layer_info,
-    count_stride2_layers,
-    count_maxpool_layers,
-    setup_logger,
-    save_results,
-    load_results,
-    clamp,
-    safe_log,
-    geometric_mean,
-)
+__version__ = '0.1.0'
 
 __all__ = [
-    # j_topo
     'compute_J_topo',
-    'compute_D_eff',
     'compute_D_eff_power_iteration',
-    'compute_D_eff_total',
-    'count_parameters',
-    'get_layer_weights_for_J_topo',
-    # scaling
-    'scaling_law',
-    'fit_scaling_law',
+    'compute_resblock_eff_W',
+    'AnalyticalPredictor',
+    'D_scaling_law',
+    'E_floor_decomposition',
+    'cooling_law',
     'predict_loss',
-    'compute_optimal_temperature',
-    'unified_scaling_law',
-    'beta_gamma',
-    'gamma_ratio_effect',
-    'compute_gamma_critical',
-    # cooling
-    'cooling_factor_linear',
-    'cooling_factor_exponential',
-    'cooling_factor_power_law',
-    'cooling_factor_cosine',
-    'get_cooling_factor',
-    'phi_cooling',
-    'phi_ratio_BN',
-    'phi_from_delta',
-    'phi',
-    'phi_gamma_ratio',
-    # utils
-    'estimate_d_manifold',
-    'compute_capacity_bound',
-    'get_layer_info',
-    'count_stride2_layers',
-    'count_maxpool_layers',
-    'setup_logger',
-    'save_results',
-    'load_results',
-    'clamp',
-    'safe_log',
-    'geometric_mean',
 ]
