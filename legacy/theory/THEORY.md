@@ -256,7 +256,7 @@ The asymptotic error floor has three contributions:
 
 Combining:
 
-$$\boxed{E_{\mathrm{floor}}(D, J_{\mathrm{topo}}) = E_{\mathrm{task}} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}} \tag{4}$$
+$$\boxed{E_{\mathrm{floor}}(D, J_{\mathrm{topo}}) = E_{\mathrm{task}} + \frac{C}{D} - B \cdot J_{\mathrm{topo}}^{\,\nu}} \tag{4}$$
 
 where $C, B, \nu > 0$ are constants. Using (2), the optimization term may also be expressed as a function of $\gamma$.
 
@@ -264,11 +264,11 @@ where $C, B, \nu > 0$ are constants. Using (2), the optimization term may also b
 
 Substituting (3) and (4) into the scaling law:
 
-$$\boxed{L(D) = \alpha \cdot D^{-\left[\beta_c - \lambda \ln J_{\mathrm{topo}}\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}\right]} \tag{5}$$
+$$\boxed{L(D) = \alpha \cdot D^{-\left[\beta_c - \lambda \ln J_{\mathrm{topo}}\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} - B \cdot J_{\mathrm{topo}}^{\,\nu}\right]} \tag{5}$$
 
 Or expressed through $\gamma$ via (2):
 
-$$L(D) = \alpha \cdot D^{-\left[\beta_c + \frac{\lambda}{\theta L}\ln(\gamma/\gamma_c)\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} + B\left(\gamma/\gamma_c\right)^{-\nu/(\theta L)}\right]$$
+$$L(D) = \alpha \cdot D^{-\left[\beta_c + \frac{\lambda}{\theta L}\ln(\gamma/\gamma_c)\right]} + \left[E_{\mathrm{task}} + \frac{C}{D} - B\left(\gamma/\gamma_c\right)^{-\nu/(\theta L)}\right]$$
 
 #### 4.6.5 Explaining the Partial Correlation Reversal
 
@@ -283,7 +283,7 @@ Equation (4) explains this: the capacity term $C/D$ dominates the width effect (
 
 The key insight: **width and $J_{\mathrm{topo}}$ are anti-correlated** ($r = -0.922$) because wide networks have a relative input bottleneck. Both effects are real and physically distinct:
 - **Width effect**: larger $D$ → larger capacity → lower $E_{\mathrm{floor}}$ (capacity channel)
-- **$J_{\mathrm{topo}}$ effect**: higher $J_{\mathrm{topo}}$ → smaller condition number → easier optimization → lower $E_{\mathrm{floor}}$ (optimization channel)
+- **$J_{\mathrm{topo}}$ effect**: higher $J_{\mathrm{topo}}$ → smaller condition number → easier optimization → lower $E_{\mathrm{floor}}$ (optimization channel, via $-B \cdot J^\nu$ term)
 
 The practical implication: **within a width group, select higher $J_{\mathrm{topo}}$; across groups, larger width dominates**.
 
@@ -478,9 +478,9 @@ The logarithmic relationship $\beta(\gamma)$ is derived from RG scaling near the
 
 1. **$\beta$ is not $J$-controlled for real architectures.** After correcting the fitter-bound artifact (previously $\alpha_{\max} = 20$ forced $\beta$ to compensate), the correlation $r(\beta, J_{\mathrm{topo}}) = 0.03$ for ThermoNet — statistically null.
 
-2. **$J_{\mathrm{topo}}$ controls $E_{\mathrm{floor}}$.** The dominant validated correlation for real architectures is:
+2. **$J_{\mathrm{topo}}$ affects $E_{\mathrm{floor}}$.** The simple (confounded) correlation across architectures is:
    $$r(J_{\mathrm{topo}}, E_{\mathrm{floor}}) = +0.83$$
-   Higher topological correlation is associated with higher asymptotic error. This is the actionable design principle for ThermoNet-family architectures.
+   However, this is confounded by width ($r(W, J) = -0.922$). The partial correlation within fixed width is **negative** ($r = -0.794$), consistent with the $-B \cdot J^\nu$ term in Eq 4: higher $J$ → lower $E_{\mathrm{floor}}$ → lower loss.
 
 3. **$\alpha$ is regularized in real architectures.** Unlike RFF networks near criticality, real architectures with skip connections and normalization exhibit bounded $\alpha \in [82, 500]$ — no divergence is observed.
 
@@ -529,7 +529,7 @@ The Edge of Stability (Cohen et al., 2021) corresponds to $T_{\mathrm{eff}}/T_c 
 | $\beta(\gamma)$ | $\beta = 0.425 \cdot \ln(\gamma/2.0) + 0.893$ | Phase S1 |
 | BN reduces $\beta$ | $\beta_{\mathrm{BN}}/\beta_{\mathrm{None}} = 0.850$ | Phase S1 |
 | Stride-2 RG suppression | $\beta = \beta_0 \cdot 0.87^{n_s}$ | Phase A |
-| $E_{\mathrm{floor}}(D,J)$ | $E_{\mathrm{floor}} = E_{\mathrm{task}} + C/D + B J_{\mathrm{topo}}^{\nu}$ | Theory |
+| $E_{\mathrm{floor}}(D,J)$ | $E_{\mathrm{floor}} = E_{\mathrm{task}} + C/D - B J_{\mathrm{topo}}^{\nu}$ | Theory |
 | $J \to E$ simple corr | $r(J, E) = +0.83$ (confounded by width) | Phase A |
 | $J \to E$ partial corr | $r = -0.794$ (width fixed) | Phase B2 |
 | Width confounder | $r(W, J_{\mathrm{topo}}) = -0.922$ | Phase B2 |

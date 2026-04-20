@@ -17,7 +17,7 @@ The loss L for a network with depth D and topology quality J_topo is:
 
 where the floor energy decomposes as:
 
-    E_floor = C/D + B · J_topo^ν
+    E_floor = C/D − B · J_topo^ν
 
 The depth exponent β follows a "cooling law" depending on the
 network's initialization quality γ:
@@ -53,8 +53,9 @@ DEFAULT_PARAMS = {
     'alpha_none': 0.68,   # α for networks without normalization
     'beta': 0.85,         # depth exponent
     'gamma_c': 1.0,       # critical initialization quality
-    'C': 0.0,             # C in E_floor = C/D + B·J_topo^ν
-    'B': 0.35,            # B coefficient
+    'C': 0.0,             # C in E_floor = E_task + C/D − B·J_topo^ν
+    'E_task': 0.35,       # E_task (asymptotic irreducible error floor offset)
+    'B': 0.10,            # B coefficient (sensitivity to J_topo)
     'nu': 1.0,            # exponent on J_topo
 }
 
@@ -87,18 +88,20 @@ def D_scaling_law(
 def E_floor_decomposition(
     D_eff: float,
     J_topo: float,
+    E_task: float = DEFAULT_PARAMS['E_task'],
     C: float = DEFAULT_PARAMS['C'],
     B: float = DEFAULT_PARAMS['B'],
     nu: float = DEFAULT_PARAMS['nu']
 ) -> float:
     """
-    Compute the floor energy: C/D + B·J_topo^ν.
+    Compute the floor energy: E_task + C/D − B·J_topo^ν.
     
     Args:
         D_eff: Effective degrees of freedom
         J_topo: Topology quality (0 to 1, higher is better)
+        E_task: Task-intrinsic irreducible error
         C: Coefficient for 1/D term
-        B: Coefficient for J_topo term
+        B: Coefficient for J_topo term (negative contribution)
         nu: Exponent on J_topo
         
     Returns:
@@ -108,9 +111,9 @@ def E_floor_decomposition(
         return float('inf')
     
     term1 = C / D_eff if D_eff > 0 else 0.0
-    term2 = B * (J_topo ** nu)
+    term2 = -B * (J_topo ** nu)
     
-    return term1 + term2
+    return E_task + term1 + term2
 
 
 def cooling_law(
@@ -302,6 +305,7 @@ class AnalyticalPredictor:
         D_term = D_scaling_law(D_eff, alpha, beta)
         E_floor = E_floor_decomposition(
             D_eff, J_topo,
+            E_task=self.params['E_task'],
             C=self.params['C'],
             B=self.params['B'],
             nu=self.params['nu']
@@ -348,6 +352,7 @@ class AnalyticalPredictor:
         D_term = D_scaling_law(D_eff, alpha, beta)
         E_floor = E_floor_decomposition(
             D_eff, J_topo,
+            E_task=self.params['E_task'],
             C=self.params['C'],
             B=self.params['B'],
             nu=self.params['nu']
