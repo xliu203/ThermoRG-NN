@@ -4,66 +4,6 @@
 
 A framework for analyzing and optimizing neural network architectures using thermodynamic principles and manifold geometry.
 
-## Project Structure
-
-```
-ThermoRG-NN/
-├── thermorg/              # Core library
-│   ├── __init__.py        # Clean API exports
-│   ├── j_topo.py          # J_topo computation with stride correction
-│   ├── scaling.py         # D-scaling law fitting
-│   ├── cooling.py         # Cooling factor φ(γ) computation
-│   └── utils.py           # Common utilities
-│
-├── theory/
-│   └── THEORY.md          # Current theory framework (v9+)
-│
-├── experiments/
-│   ├── phase_s0/          # Phase S0: RFF simulation
-│   ├── phase_s1/          # Phase S1: Cooling theory (BN, LN, None)
-│   ├── phase_a/           # Phase A: ThermoNet training (87 runs)
-│   ├── phase_b/            # Phase B: Architecture selection (HBO vs Random)
-│   └── phase_4/           # Phase 4: Stride/pooling RG correction
-│
-├── src/                   # Legacy source packages
-├── papers/                # Paper LaTeX sources
-└── examples/              # Example scripts
-```
-
-## Quick Start
-
-### Compute J_topo
-
-```python
-import torch.nn as nn
-from thermorg import compute_J_topo
-
-model = YourModel()
-J, etas = compute_J_topo(model)
-print(f"J_topo = {J:.4f}")  # 0 = bottleneck, 1 = uniform info flow
-```
-
-### D-Scaling Law
-
-```python
-from thermorg import scaling_law, fit_scaling_law
-
-D = [100, 500, 1000, 5000]
-L = [0.8, 0.4, 0.25, 0.15]
-alpha, beta, E_floor, rmse = fit_scaling_law(D, L)
-print(f"L(D) = {alpha:.3f} * D^(-{beta:.3f}) + {E_floor:.3f}")
-```
-
-### Cooling Theory
-
-```python
-from thermorg import beta_gamma
-
-gamma = 2.29  # BatchNorm variance fluctuation
-beta = beta_gamma(gamma)
-print(f"β = {beta:.3f}")  # ≈ 0.950
-```
-
 ---
 
 ## Theory Overview
@@ -134,6 +74,129 @@ $$\eta_{\mathrm{corrected}} = \eta_l \cdot \frac{C_{\mathrm{out}}}{C_{\mathrm{in
 
 ---
 
+## Project Structure
+
+```
+ThermoRG-NN/
+├── thermorg/              # Core library
+│   ├── topology_calculator.py  # J_topo computation (zero-cost)
+│   ├── analytical_predictor.py # Loss prediction (pure math)
+│   ├── calibration/           # ThermoCalibrator
+│   ├── scaling.py             # D-scaling law fitting
+│   ├── cooling.py             # Cooling factor φ(γ)
+│   └── j_topo.py              # J_topo with stride correction
+│
+├── theory/
+│   └── THEORY.md              # Full theory framework
+│
+├── experiments/
+│   ├── notebooks/             # Experiment notebooks
+│   └── results/
+│       └── EXPERIMENTS_SUMMARY.md  # Phase results summary
+│
+├── papers/                    # LaTeX sources
+└── examples/                  # Example scripts
+```
+
+---
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+**Note:** This code was developed with PyTorch 2.0+:
+
+```bash
+pip install torch==2.0.0 numpy==1.24.0 scipy==1.10.0
+```
+
+---
+
+## The 3 Modules
+
+### 1. `thermorg/topology_calculator.py` — J_topo Computation
+
+Computes J_topo from initialized network weights using Power Iteration (PI-20).
+
+- Zero-cost (no training needed)
+- ~23× faster than full SVD, ~2.5% error
+- Fixed random seed (42) for reproducibility
+
+```python
+from thermorg.topology_calculator import compute_J_topo
+
+model = ThermoNet(width=64, depth=5, norm_type='bn')
+J_topo, eta_list = compute_J_topo(model)
+print(f"J_topo = {J_topo:.4f}")
+```
+
+### 2. `thermorg/calibration/thermo_calibrator.py` — Parameter Calibration
+
+Calibrates thermodynamic EOS from observed training data.
+
+```python
+from thermorg.calibration.thermo_calibrator import ThermoCalibrator, get_default_calibration_data
+
+calibrator = ThermoCalibrator(verbose=True)
+result = calibrator.calibrate(get_default_calibration_data())
+print(result)
+```
+
+### 3. `thermorg/analytical_predictor.py` — Loss Prediction
+
+Pure mathematical prediction. **No training, no backward pass.**
+
+```python
+from thermorg.analytical_predictor import AnalyticalPredictor
+
+predictor = AnalyticalPredictor()
+loss = predictor.predict(width=64, depth=5, norm_type='bn', J_topo=0.75)
+print(f"Predicted loss: {loss:.4f}")
+```
+
+---
+
+## Minimal Example
+
+```python
+import torch
+import torch.nn as nn
+
+from thermorg.topology_calculator import compute_J_topo
+from thermorg.analytical_predictor import AnalyticalPredictor
+
+
+class ThermoNet(nn.Module):
+    def __init__(self, width, depth, norm_type='bn'):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, width, 3, padding=1)
+        self.norm1 = nn.BatchNorm2d(width) if norm_type == 'bn' else nn.Identity()
+        self.conv2 = nn.Conv2d(width, width, 3, padding=1)
+        self.norm2 = nn.BatchNorm2d(width) if norm_type == 'bn' else nn.Identity()
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(width, 10)
+
+    def forward(self, x):
+        x = self.norm1(self.conv1(x))
+        x = self.norm2(self.conv2(x))
+        return self.fc(self.pool(x).flatten(1))
+
+
+# 1. Compute J_topo (zero-cost, on initialized weights)
+model = ThermoNet(width=64, depth=5, norm_type='bn')
+J_topo, eta_list = compute_J_topo(model)
+print(f"J_topo = {J_topo:.4f}")
+
+# 2. Predict training loss
+predictor = AnalyticalPredictor()
+loss = predictor.predict(width=64, depth=5, norm_type='bn', J_topo=J_topo)
+print(f"Predicted loss: {loss:.4f}")
+```
+
+---
+
 ## Phase Status
 
 | Phase | Status | Key Result |
@@ -141,66 +204,21 @@ $$\eta_{\mathrm{corrected}} = \eta_l \cdot \frac{C_{\mathrm{out}}}{C_{\mathrm{in
 | S0 (RFF Simulation) | ✅ Complete | α phase transition, universal J_topo |
 | A (ThermoNet Training) | ✅ Complete | 87 runs, 9 architectures |
 | 4A1 (Stride-2 RG) | ✅ Complete | φ task-dependent |
-| S1 (Cooling β(γ)) | ✅ Complete | β(γ) validated for BN, None |
-| B1 (LN Cooling) | ✅ Complete | β_LN=0.219, R²=0.9997, γ≈0.41 |
-| B2 (HBO Round 1) | ✅ Complete | **Negative result**: Random best=0.386 vs HBO best=0.605 |
-| B3 (HBO_revised) | 🔄 Pending | Width-first + J_topo HIGH (Leo: next week) |
+| S1 (Cooling β(γ)) | ✅ Complete | β(γ) validated for BN, LN, None |
+| B1 (LN Cooling) | ✅ Complete | β_LN=0.219, γ≈0.41, sub-critical |
+| B3 (HBO_revised) | ✅ Complete | Width-first + J_topo HIGH: won 0.703 vs 0.781 |
 
-### Phase B: Architecture Selection
+**Full results:** [`experiments/results/EXPERIMENTS_SUMMARY.md`](experiments/results/EXPERIMENTS_SUMMARY.md)
 
-**Round 1 (Negative Result):**
-- HBO selected HIGH J_topo globally → picked narrow-deep nets (24/6) → capacity-limited
-- Random selected wide nets (96/6) → won decisively
-
-**Confounding Analysis (n=10):**
-| Relationship | Simple r | Partial r (width fixed) |
-|-------------|---------|------------------------|
-| J_topo → loss | +0.588 | **-0.794** (p=0.006) |
-| Width → loss | -0.829 | -0.891 |
-
-**Simpson's Paradox Resolved:** Wide networks have LOW J_topo AND LOW loss (capacity). Within fixed width, HIGH J_topo → LOW loss (optimization efficiency).
-
-**Round 2 (HBO_revised):**
-- Notebook: `experiments/phase_b/notebooks/phase_b_hbo_revised.ipynb`
-- Design: Width-first (W≥48) → top-30 by J_topo HIGH → L1 → L2
-- Expected: Should beat Random
-
----
-
-## Installation
-
-```bash
-pip install -e .
-```
-
-Or add to `sys.path`:
-
-```python
-import sys
-sys.path.insert(0, '/path/to/ThermoRG-NN')
-from thermorg import compute_J_topo
-```
+**Notebooks:**
+- [`experiments/notebooks/phase_a_v2.ipynb`](experiments/notebooks/phase_a_v2.ipynb) — Phase A: D-scaling law
+- [`experiments/notebooks/phase_s1_tpu.ipynb`](experiments/notebooks/phase_s1_tpu.ipynb) — Phase S1: Cooling theory
+- [`experiments/notebooks/phase_4a1_tpu.ipynb`](experiments/notebooks/phase_4a1_tpu.ipynb) — Phase 4A1: Stride-2 RG
+- [`experiments/notebooks/phase_b_hbo_revised.ipynb`](experiments/notebooks/phase_b_hbo_revised.ipynb) — Phase B3: HBO vs Random
 
 ---
 
 ## References
 
 - Theory: [`theory/THEORY.md`](theory/THEORY.md)
-- Paper: [`papers/`](papers/)
-
-## Changelog
-
-### v0.3.0 (2026-04-09)
-- **New**: LayerNorm cooling validation (β_LN=0.219, γ≈0.41, sub-critical regime)
-- **New**: J_topo(D) scaling: α_GELU=0.45 from GELU nonlinearity
-- **New**: Unified β(J_topo, γ) framework via condition number
-- **New**: Phase B2 negative result + confounding analysis
-- **New**: HBO_revised notebook (width-first + J_topo HIGH)
-- **Fixed**: LayerNorm J_topo bug in compute_J_topo (prev_D_eff chain reset)
-- **Updated**: Cooling theory β(γ) across [0.41, 3.39]
-
-### v0.2.0 (2026-04-06)
-- **New**: `thermorg/` core library at root level
-- **New**: J_topo with stride correction
-- **New**: D-scaling law fitting
-- **New**: Cooling factor computation
+- Papers: [`papers/`](papers/)
