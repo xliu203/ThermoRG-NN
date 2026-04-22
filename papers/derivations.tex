@@ -98,7 +98,7 @@ During training, activation standard deviations $\sigma_l$ evolve from initializ
 \gamma = \frac{1}{L}\sum_{l=1}^{L}\left|\ln\frac{\sigma_{\mathrm{final}}^{(l)}}{\sigma_{\mathrm{init}}^{(l)}}\right|.
 \end{equation}
 
-Large $\gamma$ indicates activations drift substantially from initialized scales (``hot'' training); small $\gamma$ indicates stable variance propagation (``cold'' training).
+Large $\gamma$ indicates activations drift substantially from initialized scales (``hot'' training)~\citep{mandt2017stochastic}; small $\gamma$ indicates stable variance propagation (``cold'' training).
 
 The EOS critical point at $\gamma_c \approx 2.0$ was identified by \citet{cohen2021theory}: training dynamics self-regulates to $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, analogous to criticality in phase transitions.
 
@@ -263,7 +263,7 @@ We derive the decomposition of the asymptotic error floor from condition number 
 The error floor $E_{\mathrm{floor}}$ has three distinct physical origins:
 
 \textbf{1. Task-Intrinsic Error ($E_{\mathrm{task}}$):}
-This is the Bayes error rate --- the irreducible minimum error determined by label noise and inherent ambiguity in the data. It is independent of architecture:
+This is the Bayes error rate --- the irreducible minimum error determined by label noise and inherent ambiguity in the data~\citep{zador1982asymptotic}. It is independent of architecture:
 \begin{equation}
 E_{\mathrm{task}} = \inf_{f} \mathbb{E}_{\mathbf{x}\sim P}[\ell(f(\mathbf{x}), y)] \geq 0.
 \end{equation}
