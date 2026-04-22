@@ -29,7 +29,7 @@ x - \frac{1}{\sqrt{2\pi}|x|} e^{-x^2/2} & x \to +\infty
 
 \subsubsection{RMT Analysis for Conv2d + GELU}
 
-Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The effective linearization of GELU for signal propagation was analyzed by \citet{danilov2020noise}. The key result is that GELU acts as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$.
+Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The GELU activation $x\Phi(x)$ saturates for large $|x|$ \citep{hendrycks2016gelu}, behaving as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$.
 
 For the spectral norm of the effective Jacobian $J_{\mathrm{eff}} = \mathrm{diag}(\sigma_{\mathrm{out}}) \cdot W \cdot \mathrm{diag}(\sigma_{\mathrm{in}})^{-1}$:
 \begin{equation}
