@@ -322,7 +322,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ across three orders of magnitude of $\gamma$. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses the confounding analysis and architecture search. Panel (a) shows the width-vs-topology confounding: wide networks dominate the width channel while narrow networks are excluded. Panel (b) shows the within-width partial correlation confirming the topology channel $r(J_{\mathrm{topo}}, L|W) = -0.794$ (p=0.006). Panel (c) illustrates the HBO$_{\mathrm{revised}}$ two-stage screening: Stage 1 selects top-30 architectures by $J_{\mathrm{topo}}$ within the wide group; Stage 2 fine-tunes the top-5 for 50 epochs. Panel (d) shows the final ranking comparison between HBO$_{\mathrm{revised}}$ and random search, where HBO$_{\mathrm{revised}}$ achieves 12\% lower best loss (0.377 vs 0.427).
+Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows J_topo vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher J_topo correlates with lower loss, but the width-J_topo confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
 
 \begin{figure}[ht]
 \centering
@@ -341,7 +341,7 @@ Figure~\ref{fig:confounding-hbo} addresses the confounding analysis and architec
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.85\textwidth]{papers/figures/fig3_confounding_hbo.png}
-\caption{Confounding analysis and architecture search. (a) Width-vs-topology confounding. (b) Within-width partial correlation. (c) HBO$_{\mathrm{revised}}$ two-stage screening. (d) Final ranking: HBO$_{\mathrm{revised}}$ vs random search.}
+\caption{Confounding analysis and cross-validation. (a) J_topo vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
 \label{fig:confounding-hbo}
 \end{figure}
 
