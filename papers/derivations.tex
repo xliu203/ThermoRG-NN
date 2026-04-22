@@ -93,7 +93,7 @@ We derive the logarithmic relationship $\beta(\gamma) = a\ln(\gamma/\gamma_c) + 
 
 \subsubsection{Physical Picture}
 
-During training, activation standard deviations $\sigma_l$ evolve from initialization to their final values. The variance fluctuation measures the net drift:
+During training, activation standard deviations $\sigma_l$ evolve from initialization to their final values. The variance fluctuation $\gamma$ measures the net drift:
 \begin{equation}
 \gamma = \frac{1}{L}\sum_{l=1}^{L}\left|\ln\frac{\sigma_{\mathrm{final}}^{(l)}}{\sigma_{\mathrm{init}}^{(l)}}\right|.
 \end{equation}
@@ -333,10 +333,10 @@ This operation integrates out high‑frequency spatial modes (short‑wavelength
 
 \subsubsection{RG Linearized Analysis}
 
-Consider a neural network at a scale‑invariant fixed point, described by an effective field theory with action $S[\phi]$. The RG transformation $\sR_b$ rescales coordinates $\mathbf{x}\to\mathbf{x}/b$ and fields $\phi(\mathbf{x})\to b^{\Delta_\phi}\phi(\mathbf{x}/b)$, where $\Delta_\phi$ is the scaling dimension of the field. Under an infinitesimal perturbation $\delta S$, the change in the scaling dimension of an observable $\sO$ is given by the eigenvalue of the linearized RG flow:
+Consider a neural network at a scale‑invariant fixed point, described by an effective field theory with action $S[\phi]$. The RG transformation $\ca{R}_b$ rescales coordinates $\mathbf{x}\to\mathbf{x}/b$ and fields $\phi(\mathbf{x})\to b^{\Delta_\phi}\phi(\mathbf{x}/b)$, where $\Delta_\phi$ is the scaling dimension of the field. Under an infinitesimal perturbation $\delta S$, the change in the scaling dimension of an observable $\ca{O}$ is given by the eigenvalue of the linearized RG flow:
 
 \begin{equation}
-\frac{d\Delta_{\sO}}{d\ln b} = \gamma_{\sO} = \langle \sO, \delta S \rangle,
+\frac{d\Delta_{\ca{O}}}{d\ln b} = \gamma_{\ca{O}} = \langle \ca{O}, \delta S \rangle,
 \end{equation}
 where the bracket denotes the operator product expansion coefficient.
 
