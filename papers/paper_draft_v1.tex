@@ -322,7 +322,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ across three orders of magnitude of $\gamma$. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows J_topo vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher J_topo correlates with lower loss, but the width-J_topo confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
+Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{topo}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_topo$ correlates with lower loss, but the width-$J_{topo}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
 
 \begin{figure}[ht]
 \centering
@@ -341,7 +341,7 @@ Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-valida
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.85\textwidth]{papers/figures/fig3_confounding_hbo.png}
-\caption{Confounding analysis and cross-validation. (a) J_topo vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
+\caption{Confounding analysis and cross-validation. (a) $J_{topo}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
 \label{fig:confounding-hbo}
 \end{figure}
 
@@ -394,7 +394,7 @@ This reveals Simpson's paradox: simple correlation $r(J_{\mathrm{topo}}, L) = +0
 
 To jointly account for width and topology, we fit a unified scoring function: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$, trained on a dataset of 10 architecturally diverse configurations spanning widths $D \in \{24, 32, 48, 64, 96\}$ and depths $L \in \{3, 5, 6\}$ with various normalization types. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$, confirming that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss (fitted: $w_1 = -0.53$, $w_2 = -3.59$). However, because $J_{\mathrm{topo}}$ and $W$ are themselves anti-correlated ($r = -0.922$), the unified score cannot fully separate their independent effects.
 
-\subsection{HBO\_revised: Two-Stage Screening}
+\subsection{HBO-revised: Two-Stage Screening}
 
 To handle the width-topology confounding, we implement a two-stage screening procedure:
 \begin{enumerate}
@@ -404,12 +404,12 @@ To handle the width-topology confounding, we implement a two-stage screening pro
 \item \textbf{L2:} train top-5 candidates for 50 epochs on full data (fine-grained evaluation)
 \end{enumerate}
 
-\textbf{Result:} HBO\_revised outperforms random search:
+\textbf{Result:} HBO-revised outperforms random search:
 
 \begin{center}
 \begin{tabular}{lcccc}
 \toprule
- & \multicolumn{2}{c}{HBO\_revised} & \multicolumn{2}{c}{Random} \\
+ & \multicolumn{2}{c}{HBO-revised} & \multicolumn{2}{c}{Random} \\
 \cmidrule{2-3} \cmidrule{4-5}
 Rank & Config & Val Loss & Config & Val Loss \\
 \midrule
@@ -424,18 +424,18 @@ Best & --- & \textbf{0.377} & --- & 0.427 \\
 \end{tabular}
 \end{center}
 \vspace{-0.5em}
-{\small * HBO\_revised selected top-5 by $J_{\mathrm{topo}}$ ranking within wide group (Stage 1); Random selected top-5 from 30 random candidates. Values from HBO\_revised Round 2 L2 (50 epochs, CIFAR-10).}
+{\small * HBO-revised selected top-5 by $J_{\mathrm{topo}}$ ranking within wide group (Stage 1); Random selected top-5 from 30 random candidates. Values from HBO-revised Round 2 L2 (50 epochs, CIFAR-10).}
 
-\textbf{HBO\_revised achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these HBO results were independently confirmed by SynFlow, a gradient-based zero-cost method, which converged on the identical optimal architecture (W=96 D=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
+\textbf{HBO-revised achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these HBO results were independently confirmed by SynFlow, a gradient-based zero-cost method, which converged on the identical optimal architecture (W=96 D=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
 
-Key insight: HBO\_revised's best candidate (loss=0.377) is 12\% better than Random's best (loss=0.427), demonstrating that J\_topo-guided search meaningfully improves over random selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
+Key insight: HBO-revised's best candidate (loss=0.377) is 12\% better than Random's best (loss=0.427), demonstrating that J\_topo-guided search meaningfully improves over random selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
 
 % ==============================================================================
 % 6. THERMORG-AL ALGORITHM
 % ==============================================================================
 \section{ThermoRG-AL Algorithm}\label{sec:thermorg-al}
 
-The two-stage principle gives rise to the ThermoRG-AL (Active Learning) algorithm. After calibration ($\sim$1 GPU-hour), predicting architecture quality costs $\sim$1ms per architecture --- fundamentally different from SynFlow and Bayesian optimization.
+The two-stage principle gives rise to the ThermoRG-AL (Active Learning) algorithm. After calibration ($\sim$1 GPU-hour), predicting architecture quality costs $\sim$1ms per architecture --- fundamentally different from SynFlow.
 
 \subsection{Calibration Phase (One-Time, $\sim$1 GPU-Hour)}
 
@@ -526,18 +526,17 @@ No training required. Cost: $\sim$1ms per architecture.
 Method & Prediction Cost & Training Evaluations & Total Search Cost \\
 \midrule
 Random Search & \$0 & 100 & 100 GPU-hours \\
-Bayesian Optimization & \$0 & 50--100 & 50--100 GPU-hours \\
 SynFlow & $\sim$1ms & 50--100 & 50--100 GPU-hours \\
 ThermoRG-AL & $\sim$1ms & \textbf{8 (calibration)} & \textbf{$\sim$1 GPU-hour} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-ThermoRG-AL is the first purely analytical (physics-derived) zero-cost predictor, requiring only $\sim$1 GPU-hour calibration vs 50--100 GPU-hours for SynFlow/Bayesian. SynFlow computes a zero-cost metric for each candidate during search, but this metric alone doesn't tell you which architecture is best --- you still need to search. ThermoRG-AL computes the prediction analytically from the calibrated equation of state, eliminating the search loop entirely.
+ThermoRG-AL is the first purely analytical (physics-derived) zero-cost predictor, requiring only $\sim$1 GPU-hour calibration vs 50--100 GPU-hours for SynFlow. SynFlow computes a zero-cost metric for each candidate during search, but this metric alone doesn't tell you which architecture is best --- you still need to search. ThermoRG-AL computes the prediction analytically from the calibrated equation of state, eliminating the search loop entirely.
 
 The fundamental difference:
 \begin{itemize}
-\item \textbf{SynFlow/Bayesian:} Learn the mapping from architecture to performance empirically
+\item \textbf{SynFlow:} Learn the mapping from architecture to performance empirically
 \item \textbf{ThermoRG-AL:} Compute the mapping analytically from physical principles
 \end{itemize}
 
