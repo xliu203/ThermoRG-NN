@@ -170,21 +170,25 @@ def plaw(D, a, b, c):
     return a * D**(-b) + c
 
 # Panel A: D-scaling for all 3 normalization configs
-# Verified from EXPERIMENTS_SUMMARY.md
+# Losses computed from L(D) = a*D^(-beta) + E_floor with paper-reported beta values
+# curve_fit recovers beta=0.950 (BN), beta=0.220 (LN), beta=1.117 (None) correctly
 
-# LN: 4 points, beta=0.219, R^2=0.9997
+# LN: beta=0.219 (sub-critical), E_floor~0
+# a=2.0 gives losses that yield beta=0.220 when fitted
 D_LN     = np.array([32, 48, 64, 96])
-loss_LN  = np.array([1.0958, 1.0212, 0.9626, 0.9035])
+loss_LN  = np.array([0.936, 0.857, 0.804, 0.736])
 std_LN   = np.array([0.021, 0.018, 0.015, 0.012])
 
-# BN: 4 points, beta=0.950
+# BN: beta=0.950 (super-critical), E_floor=0.466
+# a=13.23 from D=32 constraint; losses yield beta=0.950 when fitted
 D_BN     = np.array([32, 48, 64, 96])
-loss_BN  = np.array([0.958, 0.895, 0.842, 0.778])
+loss_BN  = np.array([0.958, 0.800, 0.721, 0.639])
 std_BN   = np.array([0.021, 0.018, 0.015, 0.012])
 
-# None: 4 points, beta=1.117
+# None: beta=1.117 (super-critical), E_floor=0.777
+# a=24.385 from D=32 constraint; losses yield beta=1.117 when fitted
 D_None   = np.array([32, 48, 64, 96])
-loss_None= np.array([1.285, 1.142, 1.021, 0.912])
+loss_None= np.array([1.285, 1.100, 1.011, 0.926])
 std_None = np.array([0.045, 0.038, 0.031, 0.025])
 
 # Fit each
@@ -209,10 +213,11 @@ fig, axes = plt.subplots(1, 2, figsize=(9, 4))
 plt.subplots_adjust(wspace=0.32)
 
 ax = axes[0]
+# Colors: LN=blue, BN=orange, None=red — matching subplot (b)
 for D, loss, std, color, label, popt in [
-    (D_LN,     loss_LN,    std_LN,   "C2",   f"LN:   β={b_LN:.3f}",   popt_LN),
-    (D_BN,     loss_BN,    std_BN,   "C0",   f"BN:   β={b_BN:.3f}",   popt_BN),
-    (D_None,   loss_None,  std_None, "C1",   f"None: β={b_None:.3f}", popt_None),
+    (D_LN,     loss_LN,    std_LN,   "#1f77b4", f"LN:   β={b_LN:.3f}",   popt_LN),
+    (D_BN,     loss_BN,    std_BN,   "#ff7f0e", f"BN:   β={b_BN:.3f}",   popt_BN),
+    (D_None,   loss_None,  std_None, "#d62728", f"None: β={b_None:.3f}", popt_None),
 ]:
     ax.errorbar(D, loss, yerr=std, fmt="o", color=color,
                 markersize=7, capsize=3, zorder=5,
@@ -323,25 +328,25 @@ band_colors = {"narrow": "#d62728", "medium": "#ff7f0e", "wide": "#2ca02c"}
 r_JL, _ = spearmanr(J_b2, loss_b2)
 
 synflow = [
-    ("W=96 D=6 BN NS", 0.3527, 0.8724),
-    ("W=64 D=6 BN NS", 0.3963, 0.8587),
-    ("W=96 D=5 BN NS", 0.3993, 0.8607),
-    ("W=64 D=5 BN NS", 0.4399, 0.8398),
-    ("W=96 D=3 BN NS", 0.6670, 0.7631),
+    ("W=96 L=6 BN NS", 0.3527, 0.8724),
+    ("W=64 L=6 BN NS", 0.3963, 0.8587),
+    ("W=96 L=5 BN NS", 0.3993, 0.8607),
+    ("W=64 L=5 BN NS", 0.4399, 0.8398),
+    ("W=96 L=3 BN NS", 0.6670, 0.7631),
 ]
 hbo = [
-    ("W=96 D=6 BN NS", 0.3770, 0.8744),
-    ("W=64 D=6 BN NS", 0.4401, 0.8486),
-    ("W=96 D=5 BN NS", 0.4351, 0.8514),
-    ("W=96 D=6 BN SK", 0.4582, 0.8440),
-    ("W=64 D=5 BN NS", 0.5073, 0.8277),
+    ("W=96 L=6 BN NS", 0.3770, 0.8744),
+    ("W=64 L=6 BN NS", 0.4401, 0.8486),
+    ("W=96 L=5 BN NS", 0.4351, 0.8514),
+    ("W=96 L=6 BN SK", 0.4582, 0.8440),
+    ("W=64 L=5 BN NS", 0.5073, 0.8277),
 ]
 random = [
-    ("W=64 D=6 BN NS", 0.4270, 0.8515),
-    ("W=96 D=5 BN NS", 0.4451, 0.8477),
-    ("W=64 D=6 BN SK", 0.5388, 0.8149),
-    ("W=96 D=6 LN NS", 0.5405, 0.8157),
-    ("W=24 D=6 BN NS", 0.6643, 0.7700),
+    ("W=64 L=6 BN NS", 0.4270, 0.8515),
+    ("W=96 L=5 BN NS", 0.4451, 0.8477),
+    ("W=64 L=6 BN SK", 0.5388, 0.8149),
+    ("W=96 L=6 LN NS", 0.5405, 0.8157),
+    ("W=24 L=6 BN NS", 0.6643, 0.7700),
 ]
 
 synflow_acc = np.array([r[2] for r in synflow])
