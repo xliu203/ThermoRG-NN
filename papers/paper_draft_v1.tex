@@ -519,7 +519,7 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
     \STATE Train $\ca{A}$ for 50 epochs on full $\D$ $\rightarrow L_{50}(\ca{A})$
 \ENDFOR
 
-\STATE $\ca{A}^* \leftarrow \argmin_{\ca{A}} L_{50}(\ca{A})$
+\STATE $\ca{A}^* \leftarrow \arg\min_{\ca{A}} L_{50}(\ca{A})$
 \RETURN $\ca{A}^*$
 \end{algorithmic}
 \end{algorithm}
