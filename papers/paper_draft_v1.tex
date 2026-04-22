@@ -558,6 +558,7 @@ We evaluated all 30 architectures in our search space using SynFlow scoring on C
 \centering
 \caption{SynFlow vs HBO: Architecture Rankings on CIFAR-10 (L2, 50 epochs)}
 \label{tab:naswot-comparison}
+\textit{Notation:} TN=ThermoNet, BN=BatchNorm, LN=LayerNorm, NS=NoSkip, SK=Skip.
 \begin{tabular}{clll}
 \toprule
 Rank & \multicolumn{2}{c}{SynFlow} & \multicolumn{1}{c}{HBO-revised} \\
@@ -653,7 +654,7 @@ The ThermoRG framework sits at the intersection of several recent lines of work 
 
 \section{Conclusion}\label{sec:conclusions}
 
-We presented ThermoRG, a thermodynamic theory of neural architecture scaling validated on plain convolutional networks with different normalization layers. The framework also extends to skip connections (ResNet-style) and dense connections (DenseNet-style), interpreted via $J_{\mathrm{topo}}$ computation but without comprehensive scaling law validation for these architectural motifs.
+We presented ThermoRG, a thermodynamic theory of neural architecture scaling validated on plain convolutional networks with different normalization layers. The framework also extends to skip connections (ResNet-style) and dense connections (DenseNet-style), interpreted via $J_{\mathrm{topo}}$ computation but without comprehensive scaling law validation for these architectural motifs. All quantitative experiments are on CIFAR-10. Validation on CIFAR-100 or TinyImageNet is future work.
 
 The framework correctly predicts using plain ConvNet building blocks: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation (validated at two representative depths L=3 and L=5, not claimed universal); (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law validated from sub-critical to super-critical regimes ($\gamma \in [0.41, 3.39]$, N=3 configurations, proof-of-concept); (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations; and (4) the design principle width-first + $J_{\mathrm{topo}}$ within groups for architecture search.
 
