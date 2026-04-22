@@ -209,7 +209,7 @@ Training moves weights from initialization, causing activation variance drift. T
 \end{equation}
 Large $\gamma$ indicates substantial drift from initialization (``hot'' training); small $\gamma$ indicates stable variance propagation (``cold'' training).
 
-Training dynamics undergoes a dynamical phase transition at the Edge of Stability (EOS) critical point $\gamma_c \approx 2.0$. This critical point corresponds to the condition $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, where gradient signals neither explode nor vanish~\citep{cohen2021theory}. Near this critical point, RG scaling dimensions flow logarithmically with the distance from criticality, yielding a logarithmic dependence of $\beta$ on $\gamma$. Specifically, the scaling exponent $\beta$ varies as $\beta \sim \ln(\gamma/\gamma_c)$ because the relevant operators are marginally relevant near the phase transition. This is analogous to the logarithmic flow of coupling constants in near-critical statistical systems.
+Training dynamics undergoes a dynamical phase transition at the Edge of Stability (EOS) critical point $\gamma_c \approx 2.0$. This critical point corresponds to the condition $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, where gradient signals neither explode nor vanish~\citep{cohen2021theory}. Near this critical point, RG scaling dimensions flow logarithmically with the distance from criticality, yielding a logarithmic dependence of $\beta$ on $\gamma$. Specifically, $\beta$ varies as $\ln(\gamma/\gamma_c)$ because the relevant operators are marginally relevant near the phase transition. This is analogous to the logarithmic flow of coupling constants in near-critical statistical systems.
 
 \begin{equation}
 \boxed{\beta(\gamma) = 0.425 \cdot \ln\!\Bigl(\frac{\gamma}{\gamma_c}\Bigr) + 0.893}, \quad \gamma_c = 2.0
@@ -259,7 +259,7 @@ See Appendix~\ref{sec:efloor-derivation} for the full derivation of the $E_{\mat
 
 \textbf{Key limitation:} Within fixed norm type, $J_{\mathrm{topo}}$ varies only $\sim 9\%$ across $D \in [32, 96]$, insufficient to independently fit the $B \cdot J_{\mathrm{topo}}^{\nu}$ term. In our current data range, $J_{\mathrm{topo}}$ varies little across widths, so $\gamma$ serves as a proxy for the topology channel in experiments. The $J_{\mathrm{topo}}$ effect on $E_{\mathrm{floor}}$ is captured through $\gamma$, which co-varies with optimization difficulty across normalization types.
 
-The small variation of J_topo with width ($\sim$9\%) indicates that, within the studied width range ($D \in \{32, 48, 64, 96\}$), the capacity channel ($C/D$) dominates the asymptotic error. This observation provides a physical justification for the two-stage screening used in architecture search: first ensure sufficient width (capacity), then optimize topology (information flow). The width-first principle is not an engineering compromise but a direct consequence of the theory's two-channel decomposition.
+The small variation of $J_{\mathrm{topo}}$ with width ($\sim$9\%) indicates that, within the studied width range ($D \in \{32, 48, 64, 96\}$), the capacity channel ($C/D$) dominates the asymptotic error. This observation provides a physical justification for the two-stage screening used in architecture search: first ensure sufficient width (capacity), then optimize topology (information flow). The width-first principle is not an engineering compromise but a direct consequence of the theory's two-channel decomposition.
 
 \subsection{Stride-2 as RG Blocking (Theoretical Prediction)}
 The speculative RG interpretation of stride-2 layers as a coarse-graining operator is discussed in Section~\ref{sec:discussion}.
@@ -328,7 +328,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ from sub-critical ($\gamma=0.41$) to super-critical ($\gamma=3.39$) regimes. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{topo}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_topo$ correlates with lower loss, but the width-$J_{topo}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
+Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_{\mathrm{topo}}$ correlates with lower loss, but the width-$J_{\mathrm{topo}}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
 
 \begin{figure}[ht]
 \centering
@@ -347,7 +347,7 @@ Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-valida
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.85\textwidth]{papers/figures/fig3_confounding_hbo.png}
-\caption{Confounding analysis and cross-validation. (a) $J_{topo}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
+\caption{Confounding analysis and cross-validation. (a) $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
 \label{fig:confounding-hbo}
 \end{figure}
 
