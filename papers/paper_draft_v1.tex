@@ -152,7 +152,7 @@ The topological correlation is:
 
 \textbf{Width dependence (GELU nonlinearity):} For Conv2d+GELU, the spectral norm grows sublinearly with width: $\lambda_{\max} \propto D^{0.52}$. Empirically:
 \begin{equation}
-\boxed{J_{\mathrm{topo}}(D) \approx J_0 \cdot D^{-\alpha_{\mathrm{GELU}}/L}}, \quad \alpha_{\mathrm{GELU}} \approx 0.45
+\boxed{J_{\mathrm{topo}}(D) \approx J_0 \cdot D^{-\alpha_{\mathrm{GELU}}/L}, \quad \alpha_{\mathrm{GELU}} \approx 0.45}
 \end{equation}
 This was validated on CIFAR-10 (5-seed averaged): depth=3 gives slope $-0.150$ vs theory $-0.150$ ($R^2=0.98$); depth=5 gives slope $-0.087$ vs theory $-0.090$ ($R^2=0.97$). Caveat: this depth-scaling law is validated at two representative depths (L=3 and L=5); we do not claim universality. The exponent $\alpha_{\mathrm{GELU}} \approx 0.45$ is fitted to CIFAR-10 plain ConvNets; generalization to other datasets or architectures (e.g., ResNet, DenseNet) is future work.
 
@@ -167,7 +167,7 @@ For a fixed architecture trained on a fixed dataset:
 \begin{equation}
 \boxed{L(D) = \alpha_{\mathrm{type}} \cdot D^{-\beta} + E_{\mathrm{floor}}}
 \end{equation}
-where $D$ is the base channel width, $\alpha_{\mathrm{type}}$ is the architecture-type complexity penalty (fitted per architecture type), $\beta$ is the \emph{learning efficiency} (fractional loss reduction per unit increase in $\log D$), and $E_{\mathrm{floor}}$ is the asymptotic irreducible error. In architecture configuration strings (e.g., W=96 D=6), W denotes width and D denotes depth; in theoretical formulas, D denotes width.
+where $D$ is the base channel width, $\alpha_{\mathrm{type}}$ is the architecture-type complexity penalty (fitted per architecture type), $\beta$ is the \emph{learning efficiency} (fractional loss reduction per unit increase in $\log D$), and $E_{\mathrm{floor}}$ is the asymptotic irreducible error. In architecture configuration strings (e.g., W=96 L=6), W denotes width and L denotes depth; in theoretical formulas, D denotes channel width.
 
 \medskip
 \noindent\textbf{Parameter scope:} The D-scaling law involves three parameters with different scopes:
@@ -328,7 +328,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ from sub-critical ($\gamma=0.41$) to super-critical ($\gamma=3.39$) regimes. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_{\mathrm{topo}}$ correlates with lower loss, but the width-$J_{\mathrm{topo}}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 D=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
+Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_{\mathrm{topo}}$ correlates with lower loss, but the width-$J_{\mathrm{topo}}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 L=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
 
 \begin{figure}[ht]
 \centering
@@ -347,7 +347,7 @@ Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-valida
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.85\textwidth]{papers/figures/fig3_confounding_hbo.png}
-\caption{Confounding analysis and cross-validation. (a) $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 D=6 BN NoSkip.}
+\caption{Confounding analysis and cross-validation. (a) $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 L=6 BN NoSkip.}
 \label{fig:confounding-hbo}
 \end{figure}
 
@@ -432,7 +432,7 @@ Best & --- & \textbf{0.377} & --- & 0.427 \\
 \vspace{-0.5em}
 {\small * HBO-revised selected top-5 by $J_{\mathrm{topo}}$ ranking within wide group (Stage 1); Random selected top-5 from 30 random candidates. Values from HBO-revised Round 2 L2 (50 epochs, CIFAR-10).}
 
-\textbf{HBO-revised achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these HBO results were independently confirmed by SynFlow, a gradient-based method, which converged on the identical optimal architecture (W=96 D=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
+\textbf{HBO-revised achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these HBO results were independently confirmed by SynFlow, a gradient-based method, which converged on the identical optimal architecture (W=96 L=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
 
 Key insight: HBO-revised's best candidate (loss=0.377) is 12\% better than Random's best (loss=0.427), demonstrating that J\_topo-guided search meaningfully improves over random selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
 
@@ -576,7 +576,7 @@ Scoring paradigm & Gradient flow at init & Physical equation of state (calibrate
 \end{table}
 {\small * Both methods require L1 + L2 multi-fidelity training for final architecture selection. The ``scoring cost'' above refers only to the per-candidate pre-screening cost, not total search cost.}
 
-\textbf{Key observations:} SynFlow and HBO independently converged on the same best architecture (W=96 D=6 BN NoSkip), with SynFlow achieving loss=0.353 and HBO achieving loss=0.377. SynFlow's top-4 candidates (W=96 D=6, W=64 D=6, W=96 D=5, W=64 D=5) all appear within HBO's top-5 rankings. Both methods significantly outperform Random (best loss=0.427), confirming that two independent zero-cost scoring approaches---gradient flow (SynFlow) and spectral topology (HBO)---rank the same top architectures. Both still require L1 + L2 training for final selection; the zero-cost scoring is only for pre-screening. SynFlow's L=3 candidate (loss=0.667) is notably worse, demonstrating that depth is important even within wide configurations.
+\textbf{Key observations:} SynFlow and HBO independently converged on the same best architecture (W=96 L=6 BN NoSkip), with SynFlow achieving loss=0.353 and HBO achieving loss=0.377. SynFlow's top-4 candidates (W=96 L=6, W=64 L=6, W=96 L=5, W=64 L=5) all appear within HBO's top-5 rankings. Both methods significantly outperform Random (best loss=0.427), confirming that two independent zero-cost scoring approaches---gradient flow (SynFlow) and spectral topology (HBO)---rank the same top architectures. Both still require L1 + L2 training for final selection; the zero-cost scoring is only for pre-screening. SynFlow's L=3 candidate (loss=0.667) is notably worse, demonstrating that depth is important even within wide configurations.
 
 The SynFlow comparison demonstrates that ThermoRG-AL's calibration-guided approach is competitive with gradient-based scoring, while providing interpretable physical parameters ($\beta$, $\gamma$, $J_{\mathrm{topo}}$) rather than uninterpretable scalar scores.
 \section{Limitations}\label{sec:limitations}
@@ -627,7 +627,7 @@ Key insights:
 
 \textbf{3. The EOS critical point as a guiding principle.} Operating near $\gamma_c \approx 2.0$ gives the best trade-off between width-scaling efficiency ($\beta$) and asymptotic error ($E_{\mathrm{floor}}$). BatchNorm moves the system toward (but not past) the critical point.
 
-\textbf{4. Cross-validation via independent no-training methods.} The convergence of HBO (J\_topo-based, spectral topology) and SynFlow (gradient-magnitude scoring) on the same optimal architecture (W=96 D=6 BN NoSkip) provides strong evidence that the ThermoRG theory's predictions are real, not artifacts of a particular metric. SynFlow achieved loss=0.353 vs HBO's loss=0.377 vs Random's loss=0.427 --- an 18\% improvement over random search by a completely different no-training mechanism. Two independent approaches (spectral topology vs gradient magnitude) finding the same optimal architecture strongly validates the theory: if the prediction were an artifact of the J\_topo metric, SynFlow would not independently converge on the identical architecture.
+\textbf{4. Cross-validation via independent no-training methods.} The convergence of HBO (J\_topo-based, spectral topology) and SynFlow (gradient-magnitude scoring) on the same optimal architecture (W=96 L=6 BN NoSkip) provides strong evidence that the ThermoRG theory's predictions are real, not artifacts of a particular metric. SynFlow achieved loss=0.353 vs HBO's loss=0.377 vs Random's loss=0.427 --- an 18\% improvement over random search by a completely different no-training mechanism. Two independent approaches (spectral topology vs gradient magnitude) finding the same optimal architecture strongly validates the theory: if the prediction were an artifact of the J\_topo metric, SynFlow would not independently converge on the identical architecture.
 
 \medskip
 \noindent\textbf{5. Relationship to Physics-Based Architecture Search.}
