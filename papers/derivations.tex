@@ -306,7 +306,7 @@ Combining all three contributions:
 \item $B \cdot J_{\mathrm{topo}}^{\nu}$: Optimization penalty for poor topology (higher $J_{\mathrm{topo}}$ = more uniform flow = easier optimization = lower error)
 \end{itemize}
 
-This decomposition explains the Simpson's paradox in Phase B2: width and $J_{\mathrm{topo}}$ are separate optimization channels with different scaling behaviors. The $C/D$ term dominates across architectures (explaining why wide networks have low loss), while the $B \cdot J_{\mathrm{topo}}^{\nu}$ term dominates within fixed-width groups (explaining why higher $J_{\mathrm{topo}}$ reduces loss at fixed $D$).
+This decomposition explains the Simpson's paradox in Stage 2 (HBO architecture search): width and $J_{\mathrm{topo}}$ are separate optimization channels with different scaling behaviors. The $C/D$ term dominates across architectures (explaining why wide networks have low loss), while the $B \cdot J_{\mathrm{topo}}^{\nu}$ term dominates within fixed-width groups (explaining why higher $J_{\mathrm{topo}}$ reduces loss at fixed $D$).
 
 % ==============================================================================
 % DERIVATION 5: Stride‑2 RG Scaling Factor (φ = 0.87)

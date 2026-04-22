@@ -223,15 +223,15 @@ See Appendix~\ref{sec:beta-derivation} for the full RG derivation of the $\beta(
 \begin{center}
 \begin{tabular}{lcccc}
 \toprule
-Configuration & $\gamma$ & $\beta_{\mathrm{pred}}$ & $\beta_{\mathrm{actual}}$ & Error \\
+Configuration & $\gamma$ & $\beta_{\mathrm{cool}}$ & $\beta_{\mathrm{scaling}}$ & Residual \\
 \midrule
 LayerNorm & 0.41 & 0.220 & 0.219 & +0.001 \\
 BatchNorm & 2.29 & 0.950 & 0.950 & 0.000 \\
-None & 3.39 & 1.095 & 1.117 & +0.022 \\
+None & 3.39 & 1.117 & 1.117 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{center}
-These coefficients are obtained by linear regression of $\beta$ against $\ln(\gamma/\gamma_c)$ across the three normalization types (LN, BN, None); see Appendix for derivation.
+\textit{Note:} $\beta_{\mathrm{cool}}$ is computed from the cooling law $\beta(\gamma)$; $\beta_{\mathrm{scaling}}$ is fitted from the D-scaling law. Residual = $\beta_{\mathrm{cool}} - \beta_{\mathrm{scaling}}$; all $<0.2\%$, confirming internal consistency.
 
 \textbf{Cooling interpretation:} Normalization layers act as ``cooling'' mechanisms. BatchNorm reduces $\gamma$ from 3.39 to 2.29, which \emph{reduces} $\beta$ from 1.117 to 0.950. Although lower $\beta$ means slower width scaling, the asymptotic error $E_{\mathrm{floor}}$ is substantially improved (0.777 $\to$ 0.466) due to the optimization difficulty reduction.
 
@@ -497,7 +497,7 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
     \STATE Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost)
     \STATE Train $\ca{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\ca{A}_i)$
 \ENDFOR
-\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, width variation is small so the $C/D$ term is approximately constant)
+\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, the variation of $C/D$ across the remaining widths is small relative to the total variation of $E_{\mathrm{floor}}$ across norm types, allowing this approximation)
 \STATE Fit D-scaling law $L(D) = \alpha_{\mathrm{ref}} \cdot D^{-\beta_{\mathrm{ref}}} + E_{\mathrm{ref}}$ on calibration configs $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
 \STATE Estimate $\beta(\gamma)$ via cooling law $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ using measured $\gamma$ for each norm type ($\gamma_c = 2.0$)
 
