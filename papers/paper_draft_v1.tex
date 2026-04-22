@@ -70,7 +70,7 @@ We present ThermoRG, a thermodynamic theory of neural architecture scaling. The 
 % ==============================================================================
 \section{Introduction}
 
-Neural Architecture Search (NAS) automates the design of neural network architectures by evaluating many candidates and selecting the best~\citep{zoph2016neural,elsken2019neural}. However, NAS is prohibitively expensive: each architecture requires full training, making the search cost comparable to the final model training itself---with estimated computational costs in the thousands of GPU-hours and significant carbon emissions for large-scale searches~\citep{patterson2022carbon}. Recent methods like SynFlow~\citep{abdelfattah2021no}, TE-NAS~\citep{chen2021te}, and Bayesian optimization reduce this cost but remain fundamentally limited: they still require training multiple architectures to learn the structure of the search space.
+Neural Architecture Search (NAS) automates the design of neural network architectures by evaluating many candidates and selecting the best~\citep{zoph2016neural,elsken2019neural}. However, NAS is prohibitively expensive: each architecture requires full training, making the search cost comparable to the final model training itself---with estimated computational costs in the thousands of GPU-hours and significant carbon emissions for large-scale searches~\citep{patterson2022carbon}. Recent methods like SynFlow~\citep{abdelfattah2021no}, TE-NAS~\citep{chen2021te}, and Bayesian optimization~\citep{kandasamy2018nas} reduce this cost but remain fundamentally limited: they still require training multiple architectures to learn the structure of the search space.
 
 We ask: \emph{Can we use physical laws to dramatically reduce architecture search cost via one-shot analytical pre-screening?}
 
@@ -84,7 +84,7 @@ Recent work has explored physics-inspired approaches to neural architecture anal
 \begin{enumerate}
 \item \textbf{Thermodynamic Framework.} We establish the ThermoRG framework comprising four interconnected objects: effective dimension $D_{\mathrm{eff}}$, topological correlation $J_{\mathrm{topo}}$, variance fluctuation $\gamma$, and scaling exponent $\beta$. The D-scaling law, $J_{\mathrm{topo}}(D)$ decay, and $\beta(\gamma)$ cooling law are all derived from physical principles and validated empirically.
 
-\item \textbf{Validated Predictions.} Using plain ConvNet building blocks ($R^2 = 0.77$--$0.89$), we confirm: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law validated from sub-critical ($\gamma=0.41$) to super-critical ($\gamma=3.39$) regimes; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox in architecture correlations.
+\item \textbf{Validated Predictions.} Using plain ConvNet building blocks ($R^2 = 0.77$--$0.89$), we confirm: (1) the $J_{\mathrm{topo}}(D) \propto D^{-0.45/L}$ width dependence from GELU saturation; (2) the $\beta(\gamma) = 0.425\ln(\gamma/2.0) + 0.893$ cooling law validated from sub-critical ($\gamma=0.41$) to super-critical ($\gamma=3.39$) regimes; (3) the two-channel decomposition of $E_{\mathrm{floor}}$ explaining Simpson's paradox~\citep{blyth1972simpson} in architecture correlations.
 
 \item \textbf{Observational Analysis of $J_{\mathrm{topo}}$ on Skip and Dense Connections.} We compute $J_{\mathrm{topo}}$ for ResNet~\cite{he2016deep} and DenseNet~\cite{huang2017densenet} using skip-aware and cumulative-channel formulations, observing that the $J_{\mathrm{topo}}$ ordering matches empirical performance ordering (DenseNet~\cite{huang2017densenet} $>$ ResNet~\cite{he2016deep} $>$ VGG~\cite{simonyan2015very}). However, this analysis is \emph{observational} and \emph{interpretive}---the scaling law and cooling theory are \emph{strictly validated only on plain ConvNets}; the scaling parameter $\alpha$ is architecture-type specific and not predicted by our theory.
 
@@ -124,7 +124,7 @@ For a weight matrix $W \in \mathbb{R}^{C_{\mathrm{out}} \times C_{\mathrm{in}}}$
 \begin{equation}
 D_{\mathrm{eff}}(W) = \frac{\|W\|_F^2}{\lambda_{\max}(W)^2}
 \end{equation}
-where $\|W\|_F^2 = \sum_{i,j} W_{ij}^2$ is the Frobenius norm squared and $\lambda_{\max}$ is the largest singular value. $D_{\mathrm{eff}}$ measures how distributed the weight matrix's energy is across its spectral decomposition. We estimate $\lambda_{\max}$ via power iteration (PI-20), approximately $23\times$ faster than SVD with $\sim 2.5\%$ error.
+where $\|W\|_F^2 = \sum_{i,j} W_{ij}^2$ is the Frobenius norm squared and $\lambda_{\max}$ is the largest singular value. $D_{\mathrm{eff}}$ measures how distributed the weight matrix's energy is across its spectral decomposition. We estimate $\lambda_{\max}$ via power iteration (PI-20)~\citep{golub2013matrix}, approximately $23\times$ faster than SVD with $\sim 2.5\%$ error.
 
 \subsection{J$_{\mathrm{topo}}$: Topological Correlation}
 
