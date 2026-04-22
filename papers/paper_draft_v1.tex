@@ -221,17 +221,16 @@ See Appendix~\ref{sec:beta-derivation} for the full RG derivation of the $\beta(
 
 \textbf{Validated from sub-critical to super-critical $\gamma$ (proof-of-concept, N=3 configurations):}
 \begin{center}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccc}
 \toprule
-Configuration & $\gamma$ & $\beta_{\mathrm{cool}}$ & $\beta_{\mathrm{scaling}}$ & Residual \\
+Configuration & $\gamma$ & $\beta_{\mathrm{cool}}$ & $\beta_{\mathrm{scaling}}$ \\
 \midrule
-LayerNorm & 0.41 & 0.220 & 0.219 & +0.001 \\
-BatchNorm & 2.29 & 0.950 & 0.950 & 0.000 \\
-None & 3.39 & 1.117 & 1.117 & 0.000 \\
+LayerNorm & 0.41 & 0.220 & 0.219 \\
+BatchNorm & 2.29 & 0.950 & 0.950 \\
+None & 3.39 & 1.117 & 1.117 \\
 \bottomrule
 \end{tabular}
 \end{center}
-\textit{Note:} $\beta_{\mathrm{cool}}$ is computed from the cooling law $\beta(\gamma)$; $\beta_{\mathrm{scaling}}$ is fitted from the D-scaling law. Residual = $\beta_{\mathrm{cool}} - \beta_{\mathrm{scaling}}$; all $<0.2\%$, confirming internal consistency.
 
 \textbf{Cooling interpretation:} Normalization layers act as ``cooling'' mechanisms. BatchNorm reduces $\gamma$ from 3.39 to 2.29, which \emph{reduces} $\beta$ from 1.117 to 0.950. Although lower $\beta$ means slower width scaling, the asymptotic error $E_{\mathrm{floor}}$ is substantially improved (0.777 $\to$ 0.466) due to the optimization difficulty reduction.
 
