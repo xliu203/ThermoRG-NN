@@ -43,9 +43,9 @@
 \def\E{{\mathbb E}}
 
 % Commands
-\def\D{\mathcal{D}}
-\def\L{\mathcal{L}}
-\def\W{\mathcal{W}}
+\def\mathcal{D}{\mathcal{D}}
+\def\mathcal{L}{\mathcal{L}}
+\def\mathcal{W}{\mathcal{W}}
 
 \begin{document}
 
@@ -445,7 +445,7 @@ The two-stage principle gives rise to the ThermoRG-AL (Active Learning) algorith
 
 \subsection{Calibration Phase (One-Time, $\sim$1 GPU-Hour)}
 
-Given a dataset $\D$ and search space $\Omega_{\mathrm{arch}}$:
+Given a dataset $\mathcal{D}$ and search space $\Omega_{\mathrm{arch}}$:
 
 \begin{enumerate}
 \item Sample $N_{\mathrm{cal}} = 8$ architecturally diverse configurations from $\Omega_{\mathrm{arch}}$
@@ -457,7 +457,7 @@ Given a dataset $\D$ and search space $\Omega_{\mathrm{arch}}$:
 \item For each config $\ca{A}_i$:
     \begin{itemize}
     \item Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost, $\sim$1ms)
-    \item Train $\ca{A}_i$ for 5 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A}_i)$
+    \item Train $\ca{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\ca{A}_i)$
     \end{itemize}
 \item Fit the $E_{\mathrm{floor}}$ decomposition:
     \begin{equation}
@@ -488,14 +488,14 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
 \caption{ThermoRG-AL: Thermodynamic Architecture Search}
 \label{alg:thermorg-al}
 \begin{algorithmic}[1]
-\REQUIRE Search space $\Omega_{\mathrm{arch}}$, Dataset $\D$, Budget $B$, Calibration budget $B_{\mathrm{cal}}$
+\REQUIRE Search space $\Omega_{\mathrm{arch}}$, Dataset $\mathcal{D}$, Budget $B$, Calibration budget $B_{\mathrm{cal}}$
 \ENSURE Optimal architecture $\ca{A}^*$
 
 \STATE \textbf{\% Calibration Phase (one-time per dataset, $\sim$1 GPU-hour)}
 \STATE Sample $N_{\mathrm{cal}} = 8$ architecturally diverse configs from $\Omega_{\mathrm{arch}}$
 \FOR{each config $\ca{A}_i$}
     \STATE Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost)
-    \STATE Train $\ca{A}_i$ for 5 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A}_i)$
+    \STATE Train $\ca{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\ca{A}_i)$
 \ENDFOR
 \STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, width variation is small so the $C/D$ term is approximately constant)
 \STATE Fit D-scaling law $L(D) = \alpha_{\mathrm{ref}} \cdot D^{-\beta_{\mathrm{ref}}} + E_{\mathrm{ref}}$ on calibration configs $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
@@ -510,13 +510,13 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
 \STATE Sort filtered candidates by $E_{\mathrm{prior}}$ (lower is better)
 \STATE Select top-$K = 30$ candidates
 \FOR{each selected candidate $\ca{A}$}
-    \STATE Train $\ca{A}$ for 10 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A})$
+    \STATE Train $\ca{A}$ for 10 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\ca{A})$
 \ENDFOR
 
 \STATE \textbf{\% Stage 3: Full Training of Top Candidates}
 \STATE Select top-$M = 5$ candidates by $L_1$
 \FOR{each selected $\ca{A}$}
-    \STATE Train $\ca{A}$ for 50 epochs on full $\D$ $\rightarrow L_{50}(\ca{A})$
+    \STATE Train $\ca{A}$ for 50 epochs on full $\mathcal{D}$ $\rightarrow L_{50}(\ca{A})$
 \ENDFOR
 
 \STATE $\ca{A}^* \leftarrow \arg\min_{\ca{A}} L_{50}(\ca{A})$
