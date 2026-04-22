@@ -43,9 +43,9 @@
 \def\E{{\mathbb E}}
 
 % Commands
-\def\D{\mathcal{D}}
-\def\L{\mathcal{L}}
-\def\W{\mathcal{W}}
+\def\D{\D}
+\def\L{\L}
+\def\W{\W}
 
 \begin{document}
 
@@ -358,7 +358,7 @@ Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-valida
 
 To illustrate how the ThermoRG framework applies to architectures beyond plain ConvNets, we compute $J_{\mathrm{topo}}$ for standard architectures with skip connections (ResNet) and dense connections (DenseNet). These results are \emph{observational} and \emph{interpretive}---the scaling law and cooling theory are \emph{strictly validated only on plain ConvNets}. Here we merely compute $J_{\mathrm{topo}}$ values and compare them to known performance rankings as a sanity check.
 
-Skip connections (e.g., ResNet): Each residual block $y = x + \mathcal{F}(x)$ provides a shortcut that reduces effective depth. For $J_{\mathrm{topo}}$ computation, each residual block is treated as a single transformation, giving ResNet an effective depth equal to the number of blocks (not conv layers). This explains why ResNet achieves $J_{\mathrm{topo}} = 0.69$ --- higher than plain ConvNets of similar depth (e.g., VGG-11 with $J_{\mathrm{topo}}=0.65$) --- despite having more total convolutions.
+Skip connections (e.g., ResNet): Each residual block $y = x + \ca{F}(x)$ provides a shortcut that reduces effective depth. For $J_{\mathrm{topo}}$ computation, each residual block is treated as a single transformation, giving ResNet an effective depth equal to the number of blocks (not conv layers). This explains why ResNet achieves $J_{\mathrm{topo}} = 0.69$ --- higher than plain ConvNets of similar depth (e.g., VGG-11 with $J_{\mathrm{topo}}=0.65$) --- despite having more total convolutions.
 
 Dense connections (e.g., DenseNet): DenseNet's dense concatenation creates a unique information flow pattern where each layer has access to all previous features. Using cumulative channel tracking (tracking the cumulative channel count $C_{\mathrm{cum}}$ after each dense block), we compute $\eta_l = (C_{\mathrm{cum}} + k) / C_{\mathrm{cum}} \approx 1$ within dense blocks, where $k$ is the channel growth rate per dense block, giving DenseNet the highest $J_{\mathrm{topo}}$ among standard architectures.
 
@@ -445,7 +445,7 @@ The two-stage principle gives rise to the ThermoRG-AL (Active Learning) algorith
 
 \subsection{Calibration Phase (One-Time, $\sim$1 GPU-Hour)}
 
-Given a dataset $\mathcal{D}$ and search space $\Omega_{\mathrm{arch}}$:
+Given a dataset $\D$ and search space $\Omega_{\mathrm{arch}}$:
 
 \begin{enumerate}
 \item Sample $N_{\mathrm{cal}} = 8$ architecturally diverse configurations from $\Omega_{\mathrm{arch}}$
@@ -454,10 +454,10 @@ Given a dataset $\mathcal{D}$ and search space $\Omega_{\mathrm{arch}}$:
     \item Vary depth: $L \in \{3, 5, 6, 9\}$
     \item Include both norm types and skip/no-skip
     \end{itemize}
-\item For each config $\mathcal{A}_i$:
+\item For each config $\ca{A}_i$:
     \begin{itemize}
-    \item Compute $J_{\mathrm{topo}}(\mathcal{A}_i)$ via power iteration (zero-cost, $\sim$1ms)
-    \item Train $\mathcal{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A}_i)$
+    \item Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost, $\sim$1ms)
+    \item Train $\ca{A}_i$ for 5 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A}_i)$
     \end{itemize}
 \item Fit the $E_{\mathrm{floor}}$ decomposition:
     \begin{equation}
@@ -471,14 +471,14 @@ Total calibration cost: $< 1$ GPU-hour.
 
 \subsection{Pre-Screening Phase (Zero-Cost, One-Shot)}
 
-Once calibrated, for any architecture $\mathcal{A}$:
+Once calibrated, for any architecture $\ca{A}$:
 
 \begin{enumerate}
-\item Compute $D(\mathcal{A})$ from architecture parameters
-\item Compute $J_{\mathrm{topo}}(\mathcal{A})$ from random weights (power iteration, $\sim$1ms)
+\item Compute $D(\ca{A})$ from architecture parameters
+\item Compute $J_{\mathrm{topo}}(\ca{A})$ from random weights (power iteration, $\sim$1ms)
 \item Predict loss:
     \begin{equation}
-    \hat{L}(\mathcal{A}) = \alpha \cdot D^{-\beta(\gamma)} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}
+    \hat{L}(\ca{A}) = \alpha \cdot D^{-\beta(\gamma)} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}
     \end{equation}
 \end{enumerate}
 
@@ -488,39 +488,39 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
 \caption{ThermoRG-AL: Thermodynamic Architecture Search}
 \label{alg:thermorg-al}
 \begin{algorithmic}[1]
-\REQUIRE Search space $\Omega_{\mathrm{arch}}$, Dataset $\mathcal{D}$, Budget $B$, Calibration budget $B_{\mathrm{cal}}$
-\ENSURE Optimal architecture $\mathcal{A}^*$
+\REQUIRE Search space $\Omega_{\mathrm{arch}}$, Dataset $\D$, Budget $B$, Calibration budget $B_{\mathrm{cal}}$
+\ENSURE Optimal architecture $\ca{A}^*$
 
 \STATE \textbf{\% Calibration Phase (one-time per dataset, $\sim$1 GPU-hour)}
 \STATE Sample $N_{\mathrm{cal}} = 8$ architecturally diverse configs from $\Omega_{\mathrm{arch}}$
-\FOR{each config $\mathcal{A}_i$}
-    \STATE Compute $J_{\mathrm{topo}}(\mathcal{A}_i)$ via power iteration (zero-cost)
-    \STATE Train $\mathcal{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A}_i)$
+\FOR{each config $\ca{A}_i$}
+    \STATE Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost)
+    \STATE Train $\ca{A}_i$ for 5 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A}_i)$
 \ENDFOR
 \STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, width variation is small so the $C/D$ term is approximately constant)
 \STATE Fit D-scaling law $L(D) = \alpha_{\mathrm{ref}} \cdot D^{-\beta_{\mathrm{ref}}} + E_{\mathrm{ref}}$ on calibration configs $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
 \STATE Estimate $\beta(\gamma)$ via cooling law $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ using measured $\gamma$ for each norm type ($\gamma_c = 2.0$)
 
 \STATE \textbf{\% Stage 1: Width-First Capacity Filter}
-\STATE Compute $D(\mathcal{A})$ and $J_{\mathrm{topo}}(\mathcal{A})$ for all candidates (zero-cost)
+\STATE Compute $D(\ca{A})$ and $J_{\mathrm{topo}}(\ca{A})$ for all candidates (zero-cost)
 \STATE Filter: $D \geq D_{\min}$ where $D_{\min} = 48$ (capacity constraint; narrower networks have insufficient degrees of freedom for CIFAR-10)
-\STATE Compute $E_{\mathrm{prior}}(\mathcal{A}) = a \cdot J_{\mathrm{topo}}(\mathcal{A}) + b$ for filtered candidates
+\STATE Compute $E_{\mathrm{prior}}(\ca{A}) = a \cdot J_{\mathrm{topo}}(\ca{A}) + b$ for filtered candidates
 
 \STATE \textbf{\% Stage 2: $J_{\mathrm{topo}}$ Within Width Groups}
 \STATE Sort filtered candidates by $E_{\mathrm{prior}}$ (lower is better)
 \STATE Select top-$K = 30$ candidates
-\FOR{each selected candidate $\mathcal{A}$}
-    \STATE Train $\mathcal{A}$ for 10 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\mathcal{A})$
+\FOR{each selected candidate $\ca{A}$}
+    \STATE Train $\ca{A}$ for 10 epochs on 10\% of $\D$ $\rightarrow L_1(\ca{A})$
 \ENDFOR
 
 \STATE \textbf{\% Stage 3: Full Training of Top Candidates}
 \STATE Select top-$M = 5$ candidates by $L_1$
-\FOR{each selected $\mathcal{A}$}
-    \STATE Train $\mathcal{A}$ for 50 epochs on full $\mathcal{D}$ $\rightarrow L_{50}(\mathcal{A})$
+\FOR{each selected $\ca{A}$}
+    \STATE Train $\ca{A}$ for 50 epochs on full $\D$ $\rightarrow L_{50}(\ca{A})$
 \ENDFOR
 
-\STATE $\mathcal{A}^* \leftarrow \argmin_{\mathcal{A}} L_{50}(\mathcal{A})$
-\RETURN $\mathcal{A}^*$
+\STATE $\ca{A}^* \leftarrow \argmin_{\ca{A}} L_{50}(\ca{A})$
+\RETURN $\ca{A}^*$
 \end{algorithmic}
 \end{algorithm}
 
