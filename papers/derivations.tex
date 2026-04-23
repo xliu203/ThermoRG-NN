@@ -389,16 +389,6 @@ Thus the RG scaling factor for stride‑2 layers is
 \boxed{\phi = 2^{-\Delta_{\mathrm{stride}}} \approx 0.87, \qquad \Delta_{\mathrm{stride}} \approx 0.20.}
 \end{equation}
 
-For a network with $n_s$ stride‑2 layers, the width‑scaling exponent is multiplicatively suppressed as $\beta = \beta_0 \cdot \phi^{\,n_s}$. This formula explains the observed $\beta \approx 0.28$ for ResNet‑18 ($n_s=3$, $\beta_0 \approx 0.415$) and unifies the scaling behavior of architectures with and without explicit down‑sampling.
-
-\subsubsection{Citations}
-
-\begin{itemize}
-\item \citet{wilson1974renormalization}: Wilson‑Kadomtsev renormalization group formalism.
-\item \citet{mehta2014exact}: Exact mapping between variational RG and deep learning, providing empirical power‑law correlations in feature maps.
-\item \citet{cohen2021theory}: Edge of Stability critical point, which governs the scaling dimension of the loss operator.
-\end{itemize}
-
 \section*{A.5 Stride-2 as RG Blocking: A Phenomenological Scaling Framework}
 
 The standard ResNet architecture utilizes skip connections to train deep networks, but downsampling layers (stride-2 convolutions) inevitably disrupt spatial information flow. We propose an RG-inspired phenomenological framework to quantify this degradation.
