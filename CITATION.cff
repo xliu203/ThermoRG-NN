@@ -1,13 +1,41 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "ThermoRG-NN: Thermogeometric Neural Architecture Search"
-abstract: "A unified framework for neural network architecture design based on spectral momentum conservation and thermodynamics principles."
+title: "ThermoRG: A Thermodynamic Theory of Neural Architecture Scaling and Its Application to Calibration-Guided Architecture Search"
+abstract: >-
+  We present ThermoRG, a phenomenological thermodynamic framework for neural
+  architecture scaling. The central objects are: (1) the effective dimension
+  Deff of each weight matrix, (2) the topological correlation Jtopo measuring
+  information-flow quality, (3) the variance fluctuation γ characterizing
+  training dynamics, and (4) the scaling exponent β governing how fast loss
+  decreases with width. We validate ThermoRG on plain convolutional networks with
+  different normalization layers, demonstrating that D-scaling laws, Jtopo quality
+  metrics, and the β(γ) cooling theory all hold across controlled building
+  blocks. Finally, we present ThermoRG-AL, a calibration-guided architecture
+  search framework. After a one-time calibration phase (~1 GPU-hour), ThermoRG-AL
+  uses a phenomenologically derived equation of state to pre-screen architectures
+  semi-analytically, dramatically reducing search cost. ThermoRG-AL achieves
+  comparable or better results than random search (best loss 0.377 vs 0.427)
+  on CIFAR-10, independently cross-validated by SynFlow.
 authors:
   - name: "Xiaonan Liu"
+    affiliation: "Arizona State University"
     orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
-version: "0.1.0"
-date-released: 2026-03-28
+version: "1.0.0"
+date-released: 2026-04-23
 url: "https://github.com/xliu203/ThermoRG-NN"
-license: Apache-2.0
+doi: "10.5281/zenodo.19708932"
 repository-code: "https://github.com/xliu203/ThermoRG-NN"
+license: Apache-2.0
+keywords:
+  - neural architecture search
+  - thermodynamic theory
+  - renormalization group
+  - scaling laws
+  - zero-cost proxy
+  - network topology
+references:
+  - type: article
+    title: "ThermoRG: A Thermodynamic Theory of Neural Architecture Scaling and Its Application to Calibration-Guided Architecture Search"
+    year: 2026
+    doi: "10.5281/zenodo.19708932"

@@ -1,8 +1,12 @@
 # ThermoRG-NN
 
-**Thermodynamic Theory of Neural Architecture Scaling**
+[![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.19708932-blue)](https://doi.org/10.5281/zenodo.19708932)
 
-A framework for analyzing and optimizing neural network architectures using thermodynamic principles and manifold geometry.
+**Thermodynamic Theory of Neural Architecture Scaling and Its Application to Calibration-Guided Architecture Search**
+
+Xiaonan Liu — Arizona State University
+
+> We present ThermoRG, a phenomenological thermodynamic framework for neural architecture scaling. We validate ThermoRG on plain convolutional networks with different normalization layers, demonstrating that D-scaling laws, J_topo quality metrics, and the β(γ) cooling theory all hold across controlled building blocks. Finally, we present ThermoRG-AL, a calibration-guided architecture search framework. After a one-time calibration phase (~1 GPU-hour), ThermoRG-AL uses a phenomenologically derived equation of state to pre-screen architectures semi-analytically, dramatically reducing search cost. ThermoRG-AL achieves comparable or better results than random search (best loss 0.377 vs 0.427) on CIFAR-10, independently cross-validated by SynFlow.
 
 ---
 
