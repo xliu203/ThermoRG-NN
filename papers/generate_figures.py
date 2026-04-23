@@ -63,7 +63,7 @@ for name, cfg in configs.items():
     ss_tot = ((cfg["loss"] - cfg["loss"].mean())**2).sum()
     r2 = 1 - ss_res / ss_tot
     fits[name] = {"popt": popt, "r2": r2, "E_floor": popt[2]}
-    print(f"  {name}: beta={popt[1]:.3f}, E_floor={popt[2]:.3f}, R2={r2:.4f}", flush=True)
+    print(f"  {name}: beta={popt[1]:.3f}, E_floor={popt[2]:.3f}, R2={r2:.3f}", flush=True)
 
 D_fit = np.linspace(25, 120, 300)
 
@@ -105,7 +105,7 @@ ax.set_xlabel("Width D", fontsize=10)
 ax.set_ylabel("Residual (data − fit)", fontsize=10)
 ax.set_title("(b)  Residuals", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
-ax.tick_params(axis="x", labelbottom=True)
+ax.tick_params(axis="x", labelbottom=False)
 ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
 ax.set_xlim(25, 120)
