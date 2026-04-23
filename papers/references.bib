@@ -4,8 +4,8 @@
 
 % Scaling Laws
 @article{kaplan2020scaling,
-  title={Scaling laws for neural language models},
-  author={Jared Kaplan and Jeff Samardzki and Simon Anouncia and Sirming Guss and William Chan and Mohammad T. Bahri and Yang Chen and Christopher M. Murad and Yanqi Zhou and others},
+  title={Scaling Laws for Neural Language Models},
+  author={Jared Kaplan and Sam McCandlish and Tom Henighan and others},
   journal={arXiv preprint arXiv:2001.08361},
   year={2020}
 }
@@ -19,16 +19,17 @@
 
 % Edge of Stability
 @article{cohen2021theory,
-  title={The edge of instability theory: Understanding the transition to instability in deep neural networks},
+  title={Gradient Descent on Neural Networks Typically Occurs at the Edge of Stability},
   author={Jeremy Cohen and Simran Kaur and Yuanzhi Li and J. Zico Kolter and Ameet Talwalkar},
-  journal={arXiv preprint arXiv:2106.04051},
-  year={2021}
+  journal={arXiv preprint arXiv:2103.00065},
+  year={2021},
+  note={ICLR 2021}
 }
 
 % Zador's Asymptotic Theory
 @article{zador1982asymptotic,
   title={Asymptotic quantization error of continuous signals and the sampling dimension},
-  author={Anthony Zador},
+  author={Paul L. Zador},
   journal={IEEE Transactions on Information Theory},
   volume={28},
   number={2},
@@ -37,19 +38,13 @@
 }
 
 % Additional foundational references
-@article{valentino2022scaling,
-  title={A modern take on the scaling laws of neural networks},
-  author={Valentino Valentino and James B. Simon and Mikhail Belkin},
-  journal={arXiv preprint arXiv:2208.14647},
-  year={2022}
-}
 
 % GELU and signal propagation
-@article{danilov2020noise,
-  title={The noise signal in neural networks: a RMT perspective},
-  author={Mikhail Danilov and Gleb Frikin and Sergey Zvork and Vadim Mitya and Alexey Zuev and Denis Shepelin and Boris Mirman and Artur Indbaev and others},
-  journal={arXiv preprint arXiv:2012.12849},
-  year={2020}
+@article{hendrycks2016gelu,
+  title={Gaussian Error Linear Units (GELUs)},
+  author={Dan Hendrycks and Kevin Gimpel},
+  journal={arXiv preprint arXiv:1606.08415},
+  year={2016}
 }
 
 % NAS Related
@@ -71,9 +66,9 @@
 }
 
 @article{abdelfattah2021no,
-  title={No-cost multi-objective neural architecture search},
-  author={Mohamed S. Abdelfattah and Abhinav Mehrotra and {\L}ukasz Dudziak and Nicholas Donald Lane},
-  journal={NeurIPS},
+  title={Zero-Cost Proxies for Lightweight NAS},
+  author={Mohamed S. Abdelfattah and Abhinav Mehrotra and \L ukasz Dudziak and Nicholas Donald Lane},
+  journal={ICLR},
   year={2021}
 }
 
@@ -105,7 +100,7 @@
 }
 
 % Weight decay and normalization
-@article{van Laarhoven2017l2,
+@article{vanLaarhoven2017l2,
   title={L2 regularization versus batch and weight normalization},
   author={Twan van Laarhoven},
   journal={arXiv preprint arXiv:1706.05350},
@@ -165,8 +160,76 @@
 }
 
 @article{chen2021te,
-  title={TE-NAS: Trainable Elastic-NAS for Neural Architecture Search},
-  author={Xuanqing Liu and Cho-Jui Hsieh and H. Harry Xue and Yunyong Ko and Samir M. Shah and Shankar S. V. N. V. B. N. and Hwanjo Yu},
-  journal={arXiv preprint arXiv:2106.04051},
+  title={TE-NAS: Training-Free Neural Architecture Search},
+  author={Wuyang Chen and Xinyu Gong and Zhangyang Wang},
+  journal={arXiv preprint arXiv:2102.11535},
+  year={2021},
+  note={ICLR 2021}
+}
+
+@article{rg-tn-2026,
+  title={Renormalization Group Guided Tensor Network Structure Search},
+  author={Maolin Wang and Bowen Yu and Sheng Zhang and Linjie Mi and Wanyu Wang and Yiqi Wang and Pengyue Jia and Xuetao Wei and Zenglin Xu and Ruocheng Guo and Xiangyu Zhao},
+  journal={arXiv preprint arXiv:2512.24663},
+  year={2025},
+  note={Accepted to AAAI 2026}
+}
+
+@article{criticality-neuroscience,
+  title={Criticality as a Determinant of Integrated Information Φ in Human Brain Networks},
+  author={Hyoungkyu Kim and UnCheol Lee},
+  journal={Entropy},
+  volume={21},
+  number={10},
+  pages={981},
+  year={2019},
+  doi={10.3390/e21100981}
+}
+
+@article{edge-of-stability-2025,
+  title={Neural Thermodynamics: Entropic Forces in Deep and Universal Representation Learning},
+  author={Liu Ziyin and Yizhou Xu and Isaac L. Chuang},
+  journal={NeurIPS},
+  year={2025},
+  note={arXiv:2505.12387}
+}
+
+@book{golub2013matrix,
+  title={Matrix Computations},
+  author={Gene H. Golub and Charles F. Van Loan},
+  publisher={Johns Hopkins University Press},
+  year={2013},
+  edition={4th}
+}
+@article{blyth1972simpson,
+  title={On Simpson's Paradox and the Sure-Thing Principle},
+  author={C. R. Blyth},
+  journal={Journal of the American Statistical Association},
+  volume={67},
+  number={338},
+  pages={364--366},
+  year={1972}
+}
+@inproceedings{kandasamy2018nas,
+  title={Neural Architecture Search with Bayesian Optimization and Optimal Transport},
+  author={Kirthevasan Kandasamy and Karun Raju Vasisht and Barnabás Póczos and Lawrence Carin},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2018}
+}
+% Zero-cost / Zero-shot NAS extensions
+@inproceedings{mellor2021neural,
+  title={Neural architecture search without training},
+  author={Mellor, Joe and Turner, Jack and Storkey, Amos and Crowley, Elliot J},
+  booktitle={International Conference on Machine Learning (ICML)},
+  pages={7588--7598},
+  year={2021},
+  organization={PMLR}
+}
+
+@inproceedings{lin2021zennas,
+  title={Zen-NAS: A zero-shot NAS for high-performance image recognition},
+  author={Lin, Ming and Wang, Pichao and Sun, Zhenhong and Chen, Hesen and Sun, Xiuyu and Qian, Qi and Li, Hao and Jin, Rong},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages={347--356},
   year={2021}
 }

@@ -1,0 +1,86 @@
+{
+ "experiment": "synflow_l2_tpu",
+ "epochs_l1": 10,
+ "epochs_l2": 50,
+ "seeds": [
+  42,
+  123
+ ],
+ "synflow_top5": [
+  {
+   "cfg": {
+    "width": 96,
+    "depth": 6,
+    "norm": "batchnorm",
+    "skip": false
+   },
+   "J_topo": 0.5424963193604435,
+   "l1_mean": 0.6020120680332184,
+   "l2_mean": 0.352693110704422,
+   "l2_std": 0.006333440542221069,
+   "l2_acc_mean": 0.8723958432674408
+  },
+  {
+   "cfg": {
+    "width": 96,
+    "depth": 5,
+    "norm": "batchnorm",
+    "skip": false
+   },
+   "J_topo": 0.476557040622864,
+   "l1_mean": 0.6845841705799103,
+   "l2_mean": 0.39931850135326385,
+   "l2_std": 0.0025121718645095825,
+   "l2_acc_mean": 0.8606770932674408
+  },
+  {
+   "cfg": {
+    "width": 96,
+    "depth": 3,
+    "norm": "batchnorm",
+    "skip": false
+   },
+   "J_topo": 0.2828514958406031,
+   "l1_mean": 1.0017154812812805,
+   "l2_mean": 0.6670033037662506,
+   "l2_std": 0.0003406107425689697,
+   "l2_acc_mean": 0.7631209790706635
+  },
+  {
+   "cfg": {
+    "width": 64,
+    "depth": 6,
+    "norm": "batchnorm",
+    "skip": false
+   },
+   "J_topo": 0.5879733794919274,
+   "l1_mean": 0.6527636051177979,
+   "l2_mean": 0.3962757736444473,
+   "l2_std": 0.006941959261894226,
+   "l2_acc_mean": 0.8587239682674408
+  },
+  {
+   "cfg": {
+    "width": 64,
+    "depth": 5,
+    "norm": "batchnorm",
+    "skip": false
+   },
+   "J_topo": 0.5432727295906701,
+   "l1_mean": 0.7173690795898438,
+   "l2_mean": 0.4398684501647949,
+   "l2_std": 0.00852164626121521,
+   "l2_acc_mean": 0.83984375
+  }
+ ],
+ "hbo_reference": {
+  "best_loss": 0.377,
+  "best_acc": 0.8744,
+  "best_config": "W=96 D=6 BN NoSkip"
+ },
+ "random_reference": {
+  "best_loss": 0.427,
+  "best_acc": 0.8515,
+  "best_config": "W=64 D=6 BN NoSkip"
+ }
+}
