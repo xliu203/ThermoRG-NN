@@ -376,7 +376,7 @@ for band_name, color in band_colors.items():
 
 ax.set_xlabel("J_topo", fontsize=11)
 ax.set_ylabel("Validation loss", fontsize=11)
-ax.set_title("(a)  J_topo vs Validation Loss (colored by width band)", fontsize=10, fontweight="bold")
+ax.set_title("(a)  J_topo vs Validation Loss", fontsize=10, fontweight="bold")
 ax.legend(fontsize=9, loc="upper left", framealpha=0.9)
 ax.set_xlim(0.62, 0.92)
 ax.set_ylim(0.32, 0.90)
