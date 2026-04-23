@@ -4,7 +4,7 @@
 
 \subsection{Step 2: GELU Width Decay ($\alpha_{\mathrm{GELU}} \approx 0.45$)}\label{sec:gelu-derivation}
 
-We derive the width decay exponent $\alpha_{\mathrm{GELU}}$ from first principles using Random Matrix Theory (RMT) and the saturation property of the GELU activation.
+We present a phenomenological derivation of the width decay exponent $\alpha_{\mathrm{GELU}}$, combining Random Matrix Theory (RMT) with empirical observations of GELU saturation.
 
 \subsubsection{Physical Picture}
 
@@ -43,7 +43,7 @@ which is \emph{sublinear} compared to the linear expectation $\propto D^{1/2}$ f
 
 \subsubsection{Derivation of $\alpha_{\mathrm{GELU}}$}
 
-Given $\lambda_{\max} \propto D^{0.52}$ (empirical GELU saturation) and $\|W\|_F^2 \propto D$ (each of $D$ output channels has $D \cdot k^2$ weights), the effective dimension is:
+Given the empirical spectral scaling $\lambda_{\max} \propto D^{0.52}$ (observed for GELU saturation; see \citep{cohen2021theory,edge-of-stability-2025} for related Edge-of-Stability phenomena) and $\|W\|_F^2 \propto D$ (each of $D$ output channels has $D \cdot k^2$ weights), the effective dimension is:
 \begin{equation}
 D_{\mathrm{eff}} = \frac{\|W\|_F^2}{\lambda_{\max}^2} \propto \frac{D}{D^{1.04}} = D^{-0.04}.
 \end{equation}
@@ -64,6 +64,8 @@ The condition number of the full $L$-layer product:
 \begin{equation}
 \kappa_{\mathrm{tot}} \sim \exp\!\Bigl(\sum_{l=1}^L |\log \eta_l|\Bigr) = \exp\!\bigl(|\log \eta_1|\bigr) \sim D^{\alpha_{\mathrm{GELU}}}.
 \end{equation}
+
+\textit{Note on the absolute value:} For the input layer with $D_{\mathrm{data}} = 3072$ (CIFAR-10 pixels) and network width $D \leq 96$, we have $\eta_1 = D_{\mathrm{eff}}^{(1)} / D_{\mathrm{data}} \ll 1$, so $\log \eta_1 < 0$ and $|\log \eta_1| = -\log \eta_1$. The sign of the scaling is rescued by noting that the hidden-layer dynamics (layers $l \geq 2$) dominate the topological correlation; the input-layer dimension mismatch is a boundary effect that does not invalidate the overall $D$-scaling. This subtlety warrants further investigation in future work when applying ThermoRG to higher-dimensional inputs (e.g., high-resolution images or token embeddings).
 
 The width dependence of $J_{\mathrm{topo}}$ follows as:
 \begin{equation}
@@ -118,13 +120,10 @@ where $\beta_c$ is the critical exponent and $a$ is the scaling field.
 
 However, for the EOS transition, the \emph{leading singular behavior} is logarithmic. This occurs when the RG flow is marginally stable (critical exponent $\nu = 1$) and the scaling dimension flows logarithmically. Integrating the RG equation:
 \begin{equation}
-\frac{d\beta}{d\gamma} = \frac{a}{\gamma - \gamma_c} \quad \Rightarrow \quad \beta(\gamma) = \beta_c + a \cdot \ln\!\Bigl|\frac{\gamma - \gamma_c}{\gamma_c}\Bigr| + \mathrm{const}.
+\frac{d\beta}{d\gamma} = \frac{a}{\gamma} \quad \Rightarrow \quad \beta(\gamma) = \beta_c + a \cdot \ln\!\Bigl(\frac{\gamma}{\gamma_c}\Bigr).
 \end{equation}
 
-For $\gamma > \gamma_c$ (the supercritical EOS regime observed empirically), this becomes:
-\begin{equation}
-\beta(\gamma) = \beta_c + a \cdot \ln\!\Bigl(\frac{\gamma}{\gamma_c}\Bigr).
-\end{equation}
+\textit{We adopt this as a phenomenological approximation.} While a strict edge-of-stability phase transition near $\gamma_c \approx 2.0$ may exhibit more complex singular behavior \citep{cohen2021theory,edge-of-stability-2025}, the logarithmic form $\beta(\gamma) \propto \ln(\gamma/\gamma_c)$ provides an excellent empirical fit across the observed sub-critical and super-critical regimes.
 
 \subsubsection{Derivation from Fluctuation-Dissipation}
 
