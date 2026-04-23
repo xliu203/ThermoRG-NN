@@ -67,7 +67,7 @@ for name, cfg in configs.items():
 
 D_fit = np.linspace(25, 120, 300)
 
-fig, axes = plt.subplots(1, 3, figsize=(12, 4.0))
+fig, axes = plt.subplots(1, 3, figsize=(12, 4.0), sharex=False)
 plt.subplots_adjust(wspace=0.35, bottom=0.22, top=0.88)
 
 # Panel (a): D-scaling log-log
@@ -87,7 +87,9 @@ ax.set_ylabel("Validation loss", fontsize=10)
 ax.set_title("(a)  D-scaling: loss vs width", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
 ax.set_xticks([32, 48, 64, 96])
+ax.set_xticklabels(["32", "48", "64", "96"])
 ax.set_xlim(25, 120)
+ax.set_yticks([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3])
 
 # Panel (b): Residuals after subtracting E_floor
 ax = axes[1]
@@ -96,7 +98,6 @@ for name, cfg in configs.items():
     residuals = cfg["loss"] - plaw(cfg["D"], *popt)
     ax.scatter(cfg["D"], residuals, color=cfg["color"], s=60, zorder=5,
                edgecolors="white", linewidths=0.7, label=name)
-    ax.axhline(0, color="gray", linestyle="--", linewidth=1.0, alpha=0.5)
 
 ax.set_xscale("log")
 ax.set_xlabel("Width D", fontsize=10)
@@ -104,8 +105,10 @@ ax.set_ylabel("Residual (data − fit)", fontsize=10)
 ax.set_title("(b)  Residuals", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
 ax.set_xticks([32, 48, 64, 96])
+ax.set_xticklabels(["32", "48", "64", "96"])
 ax.set_xlim(25, 120)
 ax.axhline(0, color="gray", linestyle="--", linewidth=1.0, alpha=0.5)
+# Hide y-axis ticks/labels are independent in panel (b), no sharing needed
 
 # Panel (c): R² values
 ax = axes[2]
