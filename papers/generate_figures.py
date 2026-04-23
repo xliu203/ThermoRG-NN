@@ -385,7 +385,7 @@ ax = axes[1]
 acc_data = [random_acc, hbo_acc, synflow_acc]
 width_data = [random_w, hbo_w, synflow_w]
 colors = ["steelblue", "#c04040", "#40a040"]
-method_names = ["Random", "HBO (J_topo)", "SynFlow (grad.)"]
+method_names = ["Random", "ThermoRG-AL (J_topo)", "SynFlow (grad.)"]
 
 bp = ax.boxplot(acc_data, positions=[0, 1, 2], patch_artist=True,
                 widths=0.55,
@@ -415,7 +415,7 @@ for i, (w_data, color) in enumerate(zip(width_data, colors)):
 ax.set_xticks([0, 1, 2])
 ax.set_xticklabels(method_names, fontsize=9)
 ax.set_ylabel("Test Accuracy (top-5 candidates)", fontsize=10)
-ax.set_title("(b)  Cross-validation: SynFlow & HBO converge to identical optimal architecture", fontsize=10, fontweight="bold")
+ax.set_title("(b)  Cross-validation: SynFlow & ThermoRG-AL converge to identical optimal architecture", fontsize=10, fontweight="bold")
 ax.set_ylim(0.70, 0.90)
 ax.grid(alpha=0.3, axis="y")
 

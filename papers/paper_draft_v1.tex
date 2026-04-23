@@ -62,7 +62,7 @@
 \maketitle
 
 \begin{abstract}
-We present ThermoRG, a phenomenological thermodynamic framework for neural architecture scaling. The central objects are: (1) the effective dimension $D_{\mathrm{eff}}$ of each weight matrix, (2) the topological correlation $J_{\mathrm{topo}}$ measuring information-flow quality, (3) the variance fluctuation $\gamma$ characterizing training dynamics, and (4) the scaling exponent $\beta$ governing how fast loss decreases with width. We validate ThermoRG on plain convolutional networks with different normalization layers, demonstrating that D-scaling laws, $J_{\mathrm{topo}}$ quality metrics, and the $\beta(\gamma)$ cooling theory all hold across controlled building blocks (three normalization types, as a proof-of-concept). We further compute $J_{\mathrm{topo}}$ for skip and dense connections (ResNet, DenseNet), observing that the $J_{\mathrm{topo}}$ ordering matches empirical performance ordering; however, this analysis is observational and the scaling law is strictly validated only on plain ConvNets. Finally, we present ThermoRG-AL, a calibration-guided architecture search framework. After a one-time calibration phase ($\sim$1 GPU-hour), ThermoRG-AL uses a phenomenologically derived equation of state to pre-screen architectures semi-analytically ($J_{\mathrm{topo}}$ computation is zero-cost, $\sim$1ms per architecture), dramatically reducing the search cost. The final architecture still requires multi-fidelity training (L1+L2), but pre-screening reduces candidates from hundreds to a handful. ThermoRG-AL achieves comparable or better results than random search (best loss 0.377 vs 0.427) on CIFAR-10. Independently, SynFlow converged on the same optimal architecture, providing cross-validation. We refer to this architecture search procedure as HBO (Heuristic Bayesian Optimization). The key distinction is paradigmatic: while zero-cost proxies typically rely entirely on heuristic gradient-scoring, ThermoRG-AL employs a semi-analytical equation-of-state inspired by statistical physics, coupled with a necessary dataset-dependent capacity safeguard, to predict architecture performance.
+We present ThermoRG, a phenomenological thermodynamic framework for neural architecture scaling. The central objects are: (1) the effective dimension $D_{\mathrm{eff}}$ of each weight matrix, (2) the topological correlation $J_{\mathrm{topo}}$ measuring information-flow quality, (3) the variance fluctuation $\gamma$ characterizing training dynamics, and (4) the scaling exponent $\beta$ governing how fast loss decreases with width. We validate ThermoRG on plain convolutional networks with different normalization layers, demonstrating that D-scaling laws, $J_{\mathrm{topo}}$ quality metrics, and the $\beta(\gamma)$ cooling theory all hold across controlled building blocks (three normalization types, as a proof-of-concept). We further compute $J_{\mathrm{topo}}$ for skip and dense connections (ResNet, DenseNet), observing that the $J_{\mathrm{topo}}$ ordering matches empirical performance ordering; however, this analysis is observational and the scaling law is strictly validated only on plain ConvNets. Finally, we present ThermoRG-AL, a calibration-guided architecture search framework. After a one-time calibration phase ($\sim$1 GPU-hour), ThermoRG-AL uses a phenomenologically derived equation of state to pre-screen architectures semi-analytically ($J_{\mathrm{topo}}$ computation is zero-cost, $\sim$1ms per architecture), dramatically reducing the search cost. The final architecture still requires multi-fidelity training (L1+L2), but pre-screening reduces candidates from hundreds to a handful. ThermoRG-AL achieves comparable or better results than random search (best loss 0.377 vs 0.427) on CIFAR-10. Independently, SynFlow converged on the same optimal architecture, providing cross-validation. We refer to this architecture search procedure as ThermoRG-AL. The key distinction is paradigmatic: while zero-cost proxies typically rely entirely on heuristic gradient-scoring, ThermoRG-AL employs a semi-analytical equation-of-state inspired by statistical physics, coupled with a necessary dataset-dependent capacity safeguard, to predict architecture performance.
 \end{abstract}
 
 % ==============================================================================
@@ -93,7 +93,7 @@ Recent work has explored physics-inspired approaches to neural architecture anal
 \item \textbf{ThermoRG-AL Algorithm.} We present ThermoRG-AL, a calibration-guided architecture search framework. ThermoRG-AL uses a two-stage semi-analytical approach: a capacity filter (Stage 1) excludes architectures where the $C/D$ term dominates and the theory breaks down, followed by the zero-cost $J_{\mathrm{topo}}$ equation-of-state pre-screening (Stage 2). After a one-time calibration ($\sim$1 GPU-hour), ThermoRG-AL achieves comparable or better results than random search on CIFAR-10 (best loss 0.377 vs 0.427). Critically, this optimal architecture was independently confirmed by SynFlow, a gradient-based zero-cost method, providing cross-validation: two orthogonal zero-cost principles (spectral topology vs. gradient flow) converge on the same optimum, strengthening confidence that the prediction is robust rather than metric-specific.
 \end{enumerate}
 
-The rest of this paper is organized as follows. Section~\ref{sec:framework} introduces the ThermoRG framework. Section~\ref{sec:validation} validates its predictions on plain ConvNets with different normalization layers. Section~\ref{sec:extensions} extends $J_{\mathrm{topo}}$ to skip and dense connections. Section~\ref{sec:search} presents the architecture search application and HBO$_{\mathrm{revised}}$ algorithm. Section~\ref{sec:thermorg-al} details the ThermoRG-AL algorithm. Sections~\ref{sec:limitations}--\ref{sec:conclusions} discuss limitations, broader implications, and conclusions.
+The rest of this paper is organized as follows. Section~\ref{sec:framework} introduces the ThermoRG framework. Section~\ref{sec:validation} validates its predictions on plain ConvNets with different normalization layers. Section~\ref{sec:extensions} extends $J_{\mathrm{topo}}$ to skip and dense connections. Section~\ref{sec:search} presents the architecture search application and ThermoRG-AL$_{\mathrm{revised}}$ algorithm. Section~\ref{sec:thermorg-al} details the ThermoRG-AL algorithm. Sections~\ref{sec:limitations}--\ref{sec:conclusions} discuss limitations, broader implications, and conclusions.
 
 % ==============================================================================
 % 2. THERMORG FRAMEWORK
@@ -329,7 +329,7 @@ Figure~\ref{fig:D-scaling} illustrates the D-scaling law validation. Panel (a) s
 
 Figure~\ref{fig:beta-gamma} illustrates the cooling theory $\beta(\gamma)$. Panel (a) shows $\beta$ vs $\gamma$ on a log-linear scale, confirming the logarithmic relationship $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ from sub-critical ($\gamma=0.41$) to super-critical ($\gamma=3.39$) regimes. Panel (b) shows the predicted vs actual $\beta$ values, with all points within 2\% of the identity line. Panel (c) shows the width-scaling trajectories for each normalization type, illustrating how cooling (normalization) shifts the effective criticality.
 
-Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_{\mathrm{topo}}$ correlates with lower loss, but the width-$J_{\mathrm{topo}}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, HBO, and SynFlow top-5 candidates. Both HBO and SynFlow independently converge on the same optimal architecture (W=96 L=6 BN NoSkip), providing strong mutual validation, with HBO achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
+Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-validation. Panel (a) shows $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox: within each band, higher $J_{\mathrm{topo}}$ correlates with lower loss, but the width-$J_{\mathrm{topo}}$ confound reverses this at the aggregate level. Panel (b) shows cross-validation via accuracy boxplots for Random, ThermoRG-AL, and SynFlow top-5 candidates. Both ThermoRG-AL and SynFlow independently converge on the same optimal architecture (W=96 L=6 BN NoSkip), providing strong mutual validation, with ThermoRG-AL achieving best accuracy 0.874 and SynFlow 0.872 versus Random's 0.852.
 
 \begin{figure}[ht]
 \centering
@@ -348,7 +348,7 @@ Figure~\ref{fig:confounding-hbo} addresses confounding analysis and cross-valida
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.85\textwidth]{papers/figures/fig3_confounding_hbo.png}
-\caption{Confounding analysis and cross-validation. (a) $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, HBO, and SynFlow top-5 candidates; HBO and SynFlow independently converge on the same optimal architecture W=96 L=6 BN NoSkip.}
+\caption{Confounding analysis and cross-validation. (a) $J_{\mathrm{topo}}$ vs validation loss colored by width band (narrow/medium/wide), revealing Simpson's paradox. (b) Cross-validation: test-accuracy boxplots for Random, ThermoRG-AL, and SynFlow top-5 candidates; ThermoRG-AL and SynFlow independently converge on the same optimal architecture W=96 L=6 BN NoSkip.}
 \label{fig:confounding-hbo}
 \end{figure}
 
@@ -395,13 +395,13 @@ While these observations are consistent with the hypothesis that $J_{\mathrm{top
 
 \subsection{Calibration-Guided Prediction Limitations}
 
-Simply selecting architectures by highest $J_{\mathrm{topo}}$ loses to random search (best loss: HBO=0.605 vs Random=0.386). Cause: narrow-deep networks (W=24) have high $J_{\mathrm{topo}}$ but insufficient capacity.
+Simply selecting architectures by highest $J_{\mathrm{topo}}$ loses to random search (best loss: ThermoRG-AL=0.605 vs Random=0.386). Cause: narrow-deep networks (W=24) have high $J_{\mathrm{topo}}$ but insufficient capacity.
 
 This reveals Simpson's paradox: simple correlation $r(J_{\mathrm{topo}}, L) = +0.588$ (misleading). Within fixed width groups: $r(J_{\mathrm{topo}}, L \mid W) = -0.794$ ($p=0.006$). Width and $J_{\mathrm{topo}}$ are anti-correlated ($r = -0.922$) --- wider networks have lower $J_{\mathrm{topo}}$ because of the GELU spectral effect.
 
 To jointly account for width and topology, we fit a unified scoring function: $\mathrm{Score} = w_1 \cdot \log W + w_2 \cdot J_{\mathrm{topo}}$, trained on a dataset of 10 architecturally diverse configurations spanning widths $D \in \{24, 32, 48, 64, 96\}$ and depths $L \in \{3, 5, 6\}$ with various normalization types. This achieves $R^2 = 0.89$ and Spearman $\rho = 0.94$, confirming that both larger width and higher $J_{\mathrm{topo}}$ independently reduce expected loss (fitted: $w_1 = -0.53$, $w_2 = -3.59$). However, because $J_{\mathrm{topo}}$ and $W$ are themselves anti-correlated ($r = -0.922$), the unified score cannot fully separate their independent effects.
 
-\subsection{HBO-revised: Two-Stage Screening}
+\subsection{ThermoRG-AL: Two-Stage Screening}
 
 To handle the width-topology confounding, we implement a two-stage screening procedure:
 \begin{enumerate}
@@ -411,12 +411,12 @@ To handle the width-topology confounding, we implement a two-stage screening pro
 \item \textbf{L2:} train top-5 candidates for 50 epochs on full data (fine-grained evaluation)
 \end{enumerate}
 
-\textbf{Result:} HBO-revised outperforms random search:
+\textbf{Result:} ThermoRG-AL outperforms random search:
 
 \begin{center}
 \begin{tabular}{lcccc}
 \toprule
- & \multicolumn{2}{c}{HBO-revised} & \multicolumn{2}{c}{Random} \\
+ & \multicolumn{2}{c}{ThermoRG-AL} & \multicolumn{2}{c}{Random} \\
 \cmidrule{2-3} \cmidrule{4-5}
 Rank & Config & Val Loss & Config & Val Loss \\
 \midrule
@@ -431,11 +431,11 @@ Best & --- & \textbf{0.377} & --- & 0.427 \\
 \end{tabular}
 \end{center}
 \vspace{-0.5em}
-{\small * HBO-revised selected top-5 by $J_{\mathrm{topo}}$ ranking within wide group (Stage 1); Random selected top-5 from 30 random candidates. Values from HBO-revised Round 2 L2 (50 epochs, CIFAR-10).}
+{\small * ThermoRG-AL selected top-5 by $J_{\mathrm{topo}}$ ranking within wide group (Stage 1); Random selected top-5 from 30 random candidates. Values from ThermoRG-AL Round 2 L2 (50 epochs, CIFAR-10).}
 
-\textbf{HBO-revised achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these HBO results were independently confirmed by SynFlow, a gradient-based method, which converged on the identical optimal architecture (W=96 L=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
+\textbf{ThermoRG-AL achieves 12\% lower best loss than Random (0.377 vs 0.427).} Critically, these ThermoRG-AL results were independently confirmed by SynFlow, a gradient-based method, which converged on the identical optimal architecture (W=96 L=6 BN NoSkip) with loss=0.353. The discovered architecture: \textbf{96 channels, depth 6, BatchNorm, no skip connections} achieves 87.4\% accuracy in 50 epochs.
 
-Key insight: HBO-revised's best candidate (loss=0.377) is 12\% better than Random's best (loss=0.427), demonstrating that J\_topo-guided search meaningfully improves over random selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
+Key insight: ThermoRG-AL's best candidate (loss=0.377) is 12\% better than Random's best (loss=0.427), demonstrating that J\_topo-guided search meaningfully improves over random selection. The golden combination: deep (L=5-6), wide (W=64-96), BatchNorm, no skip connections.
 
 % ==============================================================================
 % 6. THERMORG-AL ALGORITHM
@@ -557,12 +557,12 @@ We evaluated all 30 architectures in our search space using SynFlow scoring on C
 
 \begin{table}[htbp]
 \centering
-\caption{SynFlow vs HBO: Architecture Rankings on CIFAR-10 (L2, 50 epochs)}
+\caption{SynFlow vs ThermoRG-AL: Architecture Rankings on CIFAR-10 (L2, 50 epochs)}
 \label{tab:naswot-comparison}
 \textit{Notation:} TN=ThermoNet, BN=BatchNorm, LN=LayerNorm, NS=NoSkip, SK=Skip.
 \begin{tabular}{clll}
 \toprule
-Rank & \multicolumn{2}{c}{SynFlow} & \multicolumn{1}{c}{HBO-revised} \\
+Rank & \multicolumn{2}{c}{SynFlow} & \multicolumn{1}{c}{ThermoRG-AL} \\
 \midrule
 1 & TN-6-W96-BN-NS & \textbf{0.353} & 0.377 \\
 2 & TN-6-W64-BN-NS & 0.396 & 0.440 \\
@@ -577,7 +577,7 @@ Scoring paradigm & Gradient flow at init & Physical equation of state (calibrate
 \end{table}
 {\small * Both methods require L1 + L2 multi-fidelity training for final architecture selection. The ``scoring cost'' above refers only to the per-candidate pre-screening cost, not total search cost.}
 
-\textbf{Key observations:} SynFlow and HBO independently converged on the same best architecture (W=96 L=6 BN NoSkip), with SynFlow achieving loss=0.353 and HBO achieving loss=0.377. SynFlow's top-4 candidates (W=96 L=6, W=64 L=6, W=96 L=5, W=64 L=5) all appear within HBO's top-5 rankings. Both methods significantly outperform Random (best loss=0.427), confirming that two independent zero-cost scoring approaches---gradient flow (SynFlow) and spectral topology (HBO)---rank the same top architectures. Both still require L1 + L2 training for final selection; the zero-cost scoring is only for pre-screening. SynFlow's L=3 candidate (loss=0.667) is notably worse, demonstrating that depth is important even within wide configurations.
+\textbf{Key observations:} SynFlow and ThermoRG-AL independently converged on the same best architecture (W=96 L=6 BN NoSkip), with SynFlow achieving loss=0.353 and ThermoRG-AL achieving loss=0.377. SynFlow's top-4 candidates (W=96 L=6, W=64 L=6, W=96 L=5, W=64 L=5) all appear within ThermoRG-AL's top-5 rankings. Both methods significantly outperform Random (best loss=0.427), confirming that two independent zero-cost scoring approaches---gradient flow (SynFlow) and spectral topology (ThermoRG-AL)---rank the same top architectures. Both still require L1 + L2 training for final selection; the zero-cost scoring is only for pre-screening. SynFlow's L=3 candidate (loss=0.667) is notably worse, demonstrating that depth is important even within wide configurations.
 
 The SynFlow comparison demonstrates that ThermoRG-AL's calibration-guided approach is competitive with gradient-based scoring, while providing interpretable physical parameters ($\beta$, $\gamma$, $J_{\mathrm{topo}}$) rather than uninterpretable scalar scores.
 \section{Limitations}\label{sec:limitations}
@@ -628,7 +628,7 @@ Key insights:
 
 \textbf{3. The EOS critical point as a guiding principle.} Operating near $\gamma_c \approx 2.0$ gives the best trade-off between width-scaling efficiency ($\beta$) and asymptotic error ($E_{\mathrm{floor}}$). BatchNorm moves the system toward (but not past) the critical point.
 
-\textbf{4. Cross-validation via independent no-training methods.} The convergence of HBO (J\_topo-based, spectral topology) and SynFlow (gradient-magnitude scoring) on the same optimal architecture (W=96 L=6 BN NoSkip) provides strong evidence that the ThermoRG theory's predictions are real, not artifacts of a particular metric. SynFlow achieved loss=0.353 vs HBO's loss=0.377 vs Random's loss=0.427 --- an 18\% improvement over random search by a completely different no-training mechanism. Two independent approaches (spectral topology vs gradient magnitude) finding the same optimal architecture strongly validates the theory: if the prediction were an artifact of the J\_topo metric, SynFlow would not independently converge on the identical architecture.
+\textbf{4. Cross-validation via independent no-training methods.} The convergence of ThermoRG-AL (J\_topo-based, spectral topology) and SynFlow (gradient-magnitude scoring) on the same optimal architecture (W=96 L=6 BN NoSkip) provides strong evidence that the ThermoRG theory's predictions are real, not artifacts of a particular metric. SynFlow achieved loss=0.353 vs ThermoRG-AL's loss=0.377 vs Random's loss=0.427 --- an 18\% improvement over random search by a completely different no-training mechanism. Two independent approaches (spectral topology vs gradient magnitude) finding the same optimal architecture strongly validates the theory: if the prediction were an artifact of the J\_topo metric, SynFlow would not independently converge on the identical architecture.
 
 \medskip
 \noindent\textbf{5. Relationship to Physics-Based Architecture Search.}
