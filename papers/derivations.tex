@@ -55,7 +55,7 @@ This naive result contradicts the empirical $D_{\mathrm{eff}} \propto D^{0.45}$,
 
 The per-layer expansion ratio for the input layer ($l=1$) is:
 \begin{equation}
-\eta_1 = \frac{D_{\mathrm{eff}}^{(1)}}{D_{\mathrm{data}}} \propto \frac{D^{0.45}}{d_{\mathrm{data}}} \propto D^{0.45}.
+\eta_1 = \frac{D_{\mathrm{eff}}^{(1)}}{D_{\mathrm{data}}} \propto \frac{D^{0.45}}{D_{\mathrm{data}}} \propto D^{0.45}.
 \end{equation}
 
 Hidden layers ($l \geq 2$) have $D_{\mathrm{eff}}^{(l)} \propto D^{0.45}$ and $D_{\mathrm{eff}}^{(l-1)} \propto D^{0.45}$, so $\eta_l \approx 1$ is independent of $D$.
@@ -195,7 +195,7 @@ In Random Fourier Feature (RFF) networks, the loss scaling law is:
 L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}.
 \end{equation}
 
-The prefactor $\alpha$ measures the \emph{initial complexity penalty} --- the loss at $D \to 1$. Near the percolation critical point, fluctuations dominate and $\alpha$ follows a power-law divergence:
+The prefactor $\alpha$ measures the \emph{initial complexity penalty}: the loss at $D \to 1$. Near the percolation critical point, fluctuations dominate and $\alpha$ follows a power-law divergence:
 \begin{equation}
 \alpha = \frac{C}{|J_{\mathrm{topo}} - J_c|^{\nu}},
 \end{equation}
