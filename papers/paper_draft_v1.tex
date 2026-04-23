@@ -496,14 +496,14 @@ J\_topo computation requires no training (zero-cost). Cost: $\sim$1ms per archit
     \STATE Compute $J_{\mathrm{topo}}(\ca{A}_i)$ via power iteration (zero-cost)
     \STATE Train $\ca{A}_i$ for 5 epochs on 10\% of $\mathcal{D}$ $\rightarrow L_1(\ca{A}_i)$
 \ENDFOR
-\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}} + b$ via linear regression (after $D \geq D_{\min}$ filtering, the variation of $C/D$ across the remaining widths is small relative to the total variation of $E_{\mathrm{floor}}$ across norm types, allowing this approximation)
+\STATE Fit $E_{\mathrm{floor}} \approx a \cdot J_{\mathrm{topo}}^{L} + b$ via linear regression (after $D \geq D_{\min}$ filtering, the variation of $C/D$ across the remaining widths is small relative to the total variation of $E_{\mathrm{floor}}$ across norm types; this approximates the depth-dependent exponent $\nu = \alpha_{\mathrm{GELU}} \cdot L \cdot \theta$ with the composite feature $J_{\mathrm{topo}}^{L}$)
 \STATE Fit D-scaling law $L(D) = \alpha_{\mathrm{ref}} \cdot D^{-\beta_{\mathrm{ref}}} + E_{\mathrm{ref}}$ on calibration configs $\rightarrow \{\alpha_{\mathrm{ref}}, \beta_{\mathrm{ref}}, E_{\mathrm{ref}}\}$
 \STATE Estimate $\beta(\gamma)$ via cooling law $\beta = 0.425 \ln(\gamma/\gamma_c) + 0.893$ using measured $\gamma$ for each norm type ($\gamma_c = 2.0$)
 
 \STATE \textbf{\% Stage 1: Width-First Capacity Filter}
 \STATE Compute $D(\ca{A})$ and $J_{\mathrm{topo}}(\ca{A})$ for all candidates (zero-cost)
 \STATE Filter: $D \geq D_{\min}$ where $D_{\min} = 48$ (capacity constraint; narrower networks have insufficient degrees of freedom for CIFAR-10)
-\STATE Compute $E_{\mathrm{prior}}(\ca{A}) = a \cdot J_{\mathrm{topo}}(\ca{A}) + b$ for filtered candidates
+\STATE Compute $E_{\mathrm{prior}}(\ca{A}) = a \cdot J_{\mathrm{topo}}(\ca{A})^{L} + b$ for filtered candidates
 
 \STATE \textbf{\% Stage 2: $J_{\mathrm{topo}}$ Within Width Groups}
 \STATE Sort filtered candidates by $E_{\mathrm{prior}}$ (lower is better)
