@@ -67,7 +67,7 @@ for name, cfg in configs.items():
 
 D_fit = np.linspace(25, 120, 300)
 
-fig, axes = plt.subplots(1, 3, figsize=(12, 4.0), sharex=False)
+fig, axes = plt.subplots(1, 3, figsize=(12, 4.0), sharex=True)
 plt.subplots_adjust(wspace=0.35, bottom=0.22, top=0.88)
 
 # Panel (a): D-scaling log-log
@@ -90,6 +90,7 @@ ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
 ax.set_xlim(25, 120)
 ax.set_yticks([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3])
+ax.tick_params(axis="x", labelbottom=True)
 
 # Panel (b): Residuals after subtracting E_floor
 ax = axes[1]
@@ -104,11 +105,11 @@ ax.set_xlabel("Width D", fontsize=10)
 ax.set_ylabel("Residual (data − fit)", fontsize=10)
 ax.set_title("(b)  Residuals", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
+ax.tick_params(axis="x", labelbottom=True)
 ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
 ax.set_xlim(25, 120)
 ax.axhline(0, color="gray", linestyle="--", linewidth=1.0, alpha=0.5)
-# Hide y-axis ticks/labels are independent in panel (b), no sharing needed
 
 # Panel (c): R² values
 ax = axes[2]
@@ -118,7 +119,7 @@ colors = [configs[n]["color"] for n in names]
 bars = ax.bar(names, r2_vals, color=colors, width=0.5, edgecolor="white", linewidth=0.7)
 for bar, r2 in zip(bars, r2_vals):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.003,
-            f"{r2:.4f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
+            f"{r2:.3f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
 
 ax.set_ylabel("R² goodness of fit", fontsize=10)
 ax.set_title("(c)  R² goodness of fit", fontsize=10, fontweight="bold")
