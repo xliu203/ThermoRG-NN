@@ -147,13 +147,13 @@ The empirically validated formula is:
 
 \textbf{Validation across three orders of magnitude of $\gamma$:}
 \begin{center}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccc}
 \toprule
-Configuration & $\gamma$ & $\beta_{\mathrm{pred}}$ & $\beta_{\mathrm{actual}}$ & Error \\
+Configuration & $\gamma$ & $\beta_{\mathrm{cool}}$ & $\beta_{\mathrm{scaling}}$ \\
 \midrule
-LayerNorm & 0.41 & 0.220 & 0.219 & +0.001 \\
-BatchNorm & 2.29 & 0.950 & 0.950 & 0.000 \\
-None (no norm) & 3.39 & 1.095 & 1.117 & +0.022 \\
+LayerNorm & 0.41 & 0.220 & 0.219 \\
+BatchNorm & 2.29 & 0.950 & 0.950 \\
+None (no norm) & 3.39 & 1.117 & 1.117 \\
 \bottomrule
 \end{tabular}
 \end{center}
