@@ -74,9 +74,15 @@ ax.set_title("(a) D-scaling: loss vs width", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
 ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
-ax.set_xticks([], minor=True)  # clear auto minor ticks to avoid double labels
+ax.set_xticks([], minor=True)
 ax.set_xlim(22, 130)
-ax.set_yticks([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3])
+
+# Y-axis cleanup: force plain decimal format
+y_ticks = [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
+ax.set_yticks(y_ticks)
+ax.set_yticklabels([f"{y:.1f}" for y in y_ticks])
+ax.set_yticks([], minor=True)
+
 ax.tick_params(labelbottom=True)
 
 # ---- Panel (b): Residuals ----
