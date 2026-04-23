@@ -415,7 +415,7 @@ for i, (w_data, color) in enumerate(zip(width_data, colors)):
 ax.set_xticks([0, 1, 2])
 ax.set_xticklabels(method_names, fontsize=9)
 ax.set_ylabel("Test Accuracy (top-5 candidates)", fontsize=10)
-ax.set_title("(b)  Cross-validation: SynFlow & ThermoRG-AL converge to identical optimal architecture", fontsize=10, fontweight="bold")
+ax.set_title("(b)  Cross-validation: SynFlow vs ThermoRG-AL", fontsize=10, fontweight="bold")
 ax.set_ylim(0.70, 0.90)
 ax.grid(alpha=0.3, axis="y")
 
