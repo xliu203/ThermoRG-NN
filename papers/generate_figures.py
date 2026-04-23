@@ -70,10 +70,11 @@ ax.set_xscale("log")
 ax.set_yscale("log")
 ax.set_xlabel("Width D", fontsize=10)
 ax.set_ylabel("Validation loss", fontsize=10)
-ax.set_title("(a)  D-scaling: loss vs width", fontsize=10, fontweight="bold")
+ax.set_title("(a) D-scaling: loss vs width", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
 ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
+ax.set_xticks([], minor=True)  # clear auto minor ticks to avoid double labels
 ax.set_xlim(22, 130)
 ax.set_yticks([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3])
 ax.tick_params(labelbottom=True)
@@ -89,10 +90,11 @@ for name, cfg in configs.items():
 ax.set_xscale("log")
 ax.set_xlabel("Width D", fontsize=10)
 ax.set_ylabel("Residual (data − fit)", fontsize=10)
-ax.set_title("(b)  Residuals", fontsize=10, fontweight="bold")
+ax.set_title("(b) Residuals", fontsize=10, fontweight="bold")
 ax.legend(fontsize=8, loc="upper right")
 ax.set_xticks([32, 48, 64, 96])
 ax.set_xticklabels(["32", "48", "64", "96"])
+ax.set_xticks([], minor=True)  # clear auto minor ticks to avoid double labels
 ax.set_xlim(22, 130)
 ax.tick_params(labelbottom=True)
 ax.axhline(0, color="gray", linestyle="--", linewidth=1.0, alpha=0.5)
@@ -103,12 +105,9 @@ names = list(configs.keys())
 r2_vals = [fits[n]["r2"] for n in names]
 colors_b = [configs[n]["color"] for n in names]
 bars = ax.bar(names, r2_vals, color=colors_b, width=0.5, edgecolor="white", linewidth=0.7)
-for bar, r2 in zip(bars, r2_vals):
-    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.003,
-            f"{r2:.3f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
 
 ax.set_ylabel("R² goodness of fit", fontsize=10)
-ax.set_title("(c)  R²", fontsize=10, fontweight="bold")
+ax.set_title("(c) R²", fontsize=10, fontweight="bold")
 ax.set_ylim(0.98, 1.002)
 ax.axhline(0.99, color="gray", linestyle=":", linewidth=1.0, alpha=0.5)
 
