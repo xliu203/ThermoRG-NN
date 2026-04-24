@@ -24,7 +24,7 @@ network's initialization quality γ:
 
     β = 0.425 · ln(γ/γ_c) + 0.893
 
-where γ_c ≈ 1.0 is the critical initialization quality.
+where γ_c ≈ 2.0 is the critical initialization quality.
 
 Usage:
 ------
