@@ -43,9 +43,9 @@
 \def\E{{\mathbb E}}
 
 % Commands
-\def\D{\mathcal{D}}
-\def\L{\mathcal{L}}
-\def\W{\mathcal{W}}
+% \def\D{\mathcal{D}}
+% \def\L{\mathcal{L}}
+% \def\W{\mathcal{W}}
 
 
 \begin{document}
@@ -240,7 +240,7 @@ See Appendix~\ref{sec:beta-derivation} for the derivation of the $\beta(\gamma)$
 
 The asymptotic error has two independent channels:
 \begin{equation}
-E_{\mathrm{floor}} = \underbrace{\frac{C}{D}}_{\text{1. Capacity channel (width)}} + \underbrace{B \cdot J_{\mathrm{topo}}^{\,\nu}}_{\text{2. Topology optimization channel}}
+E_{\mathrm{floor}} = E_{\mathrm{task}} + \underbrace{\frac{C}{D}}_{\text{1. Capacity channel (width)}} - \underbrace{B \cdot J_{\mathrm{topo}}^{\,\nu}}_{\text{2. Topology optimization channel}}
 \end{equation}
 \begin{itemize}
 \item \textbf{Capacity channel ($C/D$):} Width dominates architecture performance ($r(W, L) = -0.829$). This is the primary determinant of $E_{\mathrm{floor}}$ across the full search space.
@@ -464,7 +464,7 @@ Given a dataset $\mathcal{D}$ and search space $\Omega_{\mathrm{arch}}$:
     \end{itemize}
 \item Fit the $E_{\mathrm{floor}}$ decomposition:
     \begin{equation}
-    E_{\mathrm{floor}} \approx \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}
+    E_{\mathrm{floor}} \approx E_{\mathrm{task}} + \frac{C}{D} - B \cdot J_{\mathrm{topo}}^{\,\nu}
     \end{equation}
     via linear regression using $L_1$ as proxy for $E_{\mathrm{floor}}$
 \item Estimate $\beta$ from norm-type comparison (BatchNorm: $\beta \approx 0.95$; no norm: $\beta \approx 1.12$)
@@ -481,7 +481,7 @@ Once calibrated, for any architecture $\ca{A}$:
 \item Compute $J_{\mathrm{topo}}(\ca{A})$ from random weights (power iteration, $\sim$1ms)
 \item Predict loss:
     \begin{equation}
-    \hat{L}(\ca{A}) = \alpha \cdot D^{-\beta(\gamma)} + \frac{C}{D} + B \cdot J_{\mathrm{topo}}^{\,\nu}
+    \hat{L}(\ca{A}) = \alpha \cdot D^{-\beta(\gamma)} + \frac{C}{D} - B \cdot J_{\mathrm{topo}}^{\,\nu} + E_{\mathrm{task}}
     \end{equation}
 \end{enumerate}
 
@@ -667,13 +667,6 @@ Observationally, our $J_{\mathrm{topo}}$ metric --- computed with skip-aware and
 
 Future directions include: calibrating $\phi_{\mathrm{BN}}$ and $\phi_{\mathrm{LN}}$ on ImageNet and other datasets; extending the framework to attention-based architectures (ViT); and implementing the ThermoRG-AL algorithm for practical architecture search.
 
-% ==============================================================================
-% APPENDIX
-% ==============================================================================
-\appendix
-\section{Derivations}\label{sec:derivations}
-
-\input{derivations}
 
 \section*{Acknowledgements}
 We thank the developers of DeepSeek V3.2, MiniMax M2.7, and Gemini Pro 3.1 for providing large language model assistance during the preparation of this manuscript. All AI-assisted writing, code development, theoretical derivations, and manuscript editing were conducted under the primary authorship and scientific direction of the first author.
@@ -684,4 +677,11 @@ We thank the developers of DeepSeek V3.2, MiniMax M2.7, and Gemini Pro 3.1 for p
 \bibliographystyle{plainnat}
 \bibliography{references}
 
+% ==============================================================================
+% APPENDIX
+% ==============================================================================
+\appendix
+\section{Derivations}\label{sec:derivations}
+
+\input{derivations}
 \end{document}
