@@ -51,10 +51,11 @@ import numpy as np
 # WARNING: These are dataset-specific. For other datasets, use ThermoCalibrator
 # to calibrate per-dataset. See thermorg.calibration.get_default_calibration_data().
 DEFAULT_PARAMS = {
-    'alpha_bn': 0.45,     # α for BatchNorm networks
-    'alpha_none': 0.68,   # α for networks without normalization
-    'beta': 0.85,         # depth exponent
-    'gamma_c': 1.0,       # critical initialization quality
+    'alpha_bn': 7.6,       # α_type for BatchNorm networks (from paper D-scaling fit)
+    'alpha_none': 7.6,     # α_type for networks without normalization
+    'alpha_ln': 3.9,       # α_type for LayerNorm (from paper D-scaling fit)
+    'beta': 0.85,          # depth exponent
+    'gamma_c': 2.0,       # critical initialization quality
     'C': 0.0,             # C in E_floor = E_task + C/D − B·J_topo^ν
     'E_task': 0.35,       # E_task (dataset-specific, CIFAR-10 calibrated)
     'B': 0.10,             # B coefficient (dataset-specific, CIFAR-10 calibrated)
@@ -132,7 +133,7 @@ def cooling_law(
     
     Args:
         gamma: Initialization quality metric (γ = J_topo at initialization)
-        gamma_c: Critical initialization quality (default: 1.0)
+        gamma_c: Critical initialization quality (default: 2.0)
         slope: Slope of the cooling law (default: 0.425)
         intercept: Intercept of the cooling law (default: 0.893)
         
@@ -184,10 +185,11 @@ class AnalyticalPredictor:
         E_task: float,
         B: float,
         C: float = 0.0,
-        alpha_bn: float = 0.45,
-        alpha_none: float = 0.68,
+        alpha_bn: float = 7.6,
+        alpha_none: float = 7.6,
+        alpha_ln: float = 3.9,
         beta: float = 0.85,
-        gamma_c: float = 1.0,
+        gamma_c: float = 2.0,
         nu: float = 1.0,
         dataset: str = 'unknown',
         use_cooling_law: bool = False
@@ -201,10 +203,11 @@ class AnalyticalPredictor:
             B: Sensitivity of E_floor to J_topo (from calibration).
                Dataset-specific — MUST be calibrated per dataset.
             C: Finite-width correction coefficient (default: 0.0)
-            alpha_bn: α for BatchNorm networks (default: 0.45)
-            alpha_none: α for no-normalization networks (default: 0.68)
+            alpha_bn: α_type for BatchNorm networks (default: 7.6, from D-scaling fit)
+            alpha_none: α_type for no-normalization networks (default: 7.6, from D-scaling fit)
+            alpha_ln: α_type for LayerNorm networks (default: 3.9, from D-scaling fit)
             beta: Depth exponent / cooling law parameter (default: 0.85)
-            gamma_c: Critical initialization quality (default: 1.0)
+            gamma_c: Critical initialization quality (default: 2.0)
             nu: Exponent on J_topo in E_floor (default: 1.0)
             dataset: Dataset name for reference (e.g., 'cifar10')
             use_cooling_law: If True, compute β from γ via cooling_law()
@@ -214,6 +217,7 @@ class AnalyticalPredictor:
         self.C = C
         self.alpha_bn = alpha_bn
         self.alpha_none = alpha_none
+        self.alpha_ln = alpha_ln
         self.beta = beta
         self.gamma_c = gamma_c
         self.nu = nu
@@ -256,13 +260,15 @@ class AnalyticalPredictor:
         Get α parameter for normalization type.
         
         Args:
-            norm_type: 'bn' for BatchNorm, 'none' or anything else for no norm
+            norm_type: 'bn' for BatchNorm, 'ln' for LayerNorm, 'none' or anything else for no norm
             
         Returns:
             α value
         """
         if norm_type.lower() == 'bn':
             return self.alpha_bn
+        elif norm_type.lower() == 'ln':
+            return self.alpha_ln
         else:
             return self.alpha_none
     
