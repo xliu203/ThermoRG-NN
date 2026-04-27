@@ -29,7 +29,7 @@ x - \frac{1}{\sqrt{2\pi}|x|} e^{-x^2/2} & x \to +\infty
 
 \subsubsection{RMT Analysis for Conv2d + GELU}
 
-Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The effective linearization of GELU for signal propagation was analyzed by \citet{schoenholz2017deep}. The key result is that GELU acts as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$.
+Consider a Conv2d+GELU layer with $D$ input and output channels. At initialization, weights are i.i.d. Gaussian. The GELU activation function~\citep{hendrycks2016gelu}, analyzed through the edge-of-chaos framework pioneered by~\citet{schoenholz2017deep} for tanh/sigmoid/ReLU networks, acts as a \emph{tanh-like} saturating nonlinearity with effective slope $g_{\mathrm{eff}} < 1$.
 
 For the spectral norm of the effective Jacobian $J_{\mathrm{eff}} = \mathrm{diag}(\sigma_{\mathrm{out}}) \cdot W \cdot \mathrm{diag}(\sigma_{\mathrm{in}})^{-1}$:
 \begin{equation}
@@ -100,7 +100,7 @@ During training, activation standard deviations $\sigma_l$ evolve from initializ
 
 Large $\gamma$ indicates activations drift substantially from initialized scales (``hot'' training); small $\gamma$ indicates stable variance propagation (``cold'' training).
 
-The EOS critical point at $\gamma_c \approx 2.0$ was identified by \citet{cohen2021theory}: training dynamics self-regulates to $\lambda_{\max}(H)/\lambda_{\max}(W) \approx 2$, analogous to criticality in phase transitions.
+The EOS critical point at $\gamma_c \approx 2.0$ was established by \citet{cohen2021theory}: training dynamics self-regulate such that the sharpness $\lambda_{\max}(H) \approx 2/\eta$. We hypothesize that this corresponds to $\gamma_c \approx 2.0$ via the mapping $\gamma \propto \log(T_{\mathrm{eff}}/T_c)$, analogous to criticality in phase transitions.
 
 \subsubsection{RG Scaling Near the Critical Point}
 
@@ -153,7 +153,7 @@ Configuration & $\gamma$ & $\beta_{\mathrm{pred}}$ & $\beta_{\mathrm{actual}}$ &
 \midrule
 LayerNorm & 0.41 & 0.220 & 0.219 & +0.001 \\
 BatchNorm & 2.29 & 0.950 & 0.950 & 0.000 \\
-None (no norm) & 3.39 & 1.095 & 1.117 & +0.022 \\
+None (no norm) & 3.39 & 1.117 & 1.117 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -174,6 +174,10 @@ The cooling theory explains why normalization layers act as ``cooling'' mechanis
 
 \subsection{Step 4: Critical Point $J_c \approx 0.35$}\label{sec:critical-point}
 
+\begin{quote}
+\textbf{Speculative analysis.} The critical point $J_c \approx 0.35$ is based on $N=5$ RFF network configurations with limited intermediate data (a large gap exists between $J=0.324$ and $J=0.394$). The divergence pattern is suggestive but not independently validated. This is placed in the Appendix as exploratory work, not as a core theoretical result.
+\end{quote}
+
 We derive the critical point $J_c \approx 0.35$ where the scaling prefactor $\alpha$ diverges, using percolation and phase transition theory.
 
 \subsubsection{Physical Picture: Percolation on a Network Graph}
@@ -192,7 +196,7 @@ The critical point $J_c \approx 0.35$ marks the \emph{percolation threshold} whe
 
 In Random Fourier Feature (RFF) networks, the loss scaling law is:
 \begin{equation}
-L(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}.
+\mathcal{L}(D) = \alpha \cdot D^{-\beta} + E_{\mathrm{floor}}.
 \end{equation}
 
 The prefactor $\alpha$ measures the \emph{initial complexity penalty} --- the loss at $D \to 1$. Near the percolation critical point, fluctuations dominate and $\alpha$ follows a power-law divergence:
@@ -275,20 +279,20 @@ E_{\mathrm{cap}}(D) = \frac{C}{D},
 \end{equation}
 where $C > 0$ is a dataset-dependent constant. Larger width $D$ reduces this capacity-limited error.
 
-\textbf{3. Topological Optimization Difficulty ($B \cdot J_{\mathrm{topo}}^{\nu}$):}
+\textbf{3. Topological Optimization Benefit ($B \cdot J_{\mathrm{topo}}^{\nu}$):}
 The condition number $\kappa_{\mathrm{tot}} \sim D^{\alpha_{\mathrm{GELU}}}$ controls optimization difficulty. Using the relation $J_{\mathrm{topo}} \propto D^{-\alpha_{\mathrm{GELU}}/L}$:
 \begin{equation}
-\kappa_{\mathrm{tot}} \propto J_{\mathrm{topo}}^{-\alpha_{\mathrm{GELU}} L}.
+\kappa_{\mathrm{tot}} \propto J_{\mathrm{topo}}^{-L}.
 \end{equation}
 
-From gradient-based optimization theory, the convergence rate depends on $\kappa_{\mathrm{tot}}$:
+From gradient-based optimization theory, the convergence rate depends on $\kappa_{\mathrm{tot}}$~\citep{boyd2004convex}:
 \begin{equation}
-\text{convergence rate} \propto \kappa_{\mathrm{tot}}^{-\theta} \propto J_{\mathrm{topo}}^{\alpha_{\mathrm{GELU}} L \theta}.
+\text{convergence rate} \propto \kappa_{\mathrm{tot}}^{-\theta} \propto J_{\mathrm{topo}}^{\,L\theta}.
 \end{equation}
 
 The final optimization error scales inversely with the convergence rate:
 \begin{equation}
-E_{\mathrm{opt}}(J_{\mathrm{topo}}) = B \cdot J_{\mathrm{topo}}^{\nu}, \quad \nu = \alpha_{\mathrm{GELU}} \cdot L \cdot \theta > 0,
+\Delta E_{\mathrm{opt}}(J_{\mathrm{topo}}) = B \cdot J_{\mathrm{topo}}^{\nu}, \quad \nu = L \cdot \theta > 0,
 \end{equation}
 where $B > 0$ is a dataset-dependent amplitude.
 
@@ -303,7 +307,7 @@ Combining all three contributions:
 \begin{itemize}
 \item $E_{\mathrm{task}}$: Irreducible Bayes error (independent of architecture)
 \item $C/D$: Capacity benefit from wider networks (finite-width correction)
-\item $B \cdot J_{\mathrm{topo}}^{\nu}$: Optimization penalty for poor topology (higher $J_{\mathrm{topo}}$ = more uniform flow = easier optimization = lower error)
+\item $-B \cdot J_{\mathrm{topo}}^{\nu}$: Optimization benefit from uniform information flow (higher $J_{\mathrm{topo}}$ $\Rightarrow$ faster convergence $\Rightarrow$ lower error)
 \end{itemize}
 
 This decomposition explains the Simpson's paradox in Phase B2: width and $J_{\mathrm{topo}}$ are separate optimization channels with different scaling behaviors. The $C/D$ term dominates across architectures (explaining why wide networks have low loss), while the $B \cdot J_{\mathrm{topo}}^{\nu}$ term dominates within fixed-width groups (explaining why higher $J_{\mathrm{topo}}$ reduces loss at fixed $D$).
@@ -313,6 +317,10 @@ This decomposition explains the Simpson's paradox in Phase B2: width and $J_{\ma
 % ==============================================================================
 
 \subsection{A.5 Stride-2 as RG Blocking: A Phenomenological Scaling Framework}\label{sec:stride2-rg}
+
+\begin{quote}
+\textit{Speculative analysis.} This section presents a phenomenological RG framework for stride-2 downsampling. The scaling form $\beta = \beta_0 \cdot \phi^{n_s}$ is empirically calibrated from ResNet-18 (N=1 configuration) and should be treated as a forward prediction, not an independently validated result.
+\end{quote}
 
 The standard ResNet architecture utilizes skip connections to train deep networks, but downsampling layers (stride-2 convolutions) inevitably disrupt spatial information flow. We propose an RG-inspired phenomenological framework to quantify this degradation.
 
