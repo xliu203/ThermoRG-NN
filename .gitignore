@@ -43,3 +43,6 @@ Thumbs.db
 # Memory
 memory/
 *.md (except README.md)
+
+# Memory and working files
+memory/
