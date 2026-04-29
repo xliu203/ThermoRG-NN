@@ -1,0 +1,44 @@
+# Phase 0.1: EOS Boundary Verification
+# ConvNet L=5, D=256, BN vs LN
+# 8 learning rates, 3 seeds, 20 epochs
+
+experiment:
+  name: "phase_0.1_eos_verification"
+  description: "Verify EOS condition λ_max · η_crit ≈ 2 for BN and LN"
+  
+architecture:
+  L: 5
+  kernel_size: 3
+  skip_connections: false
+  activation: GELU
+
+norm_types: ['batchnorm', 'layernorm']
+
+D_values: [256]
+
+lr_values: [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3]
+
+seeds: [42, 43, 44]
+
+training:
+  epochs: 20
+  batch_size: 128
+  optimizer: SGD
+  momentum: 0.9
+  weight_decay: 0.0
+  scheduler: cosine
+
+dataset:
+  name: CIFAR10
+  num_classes: 10
+
+measurements:
+  lambda_max_at_init: true
+  lambda_max_at_stationary: false
+  gamma: false
+  beta: false
+
+output:
+  save_models: false
+  save_losses: true
+  save_lambda: true

@@ -1,0 +1,45 @@
+# Phase 1.1: Full TPU Sweep
+# 4 norm types × 6 D × 8 η × 5 seeds
+# 40 epochs
+
+experiment:
+  name: "phase_1.1_full_sweep"
+  description: "Complete normalization × D × η grid scan"
+  
+architecture:
+  L: 5
+  kernel_size: 3
+  skip_connections: false
+  activation: GELU
+
+norm_types: ['batchnorm', 'layernorm', 'groupnorm', 'none']
+
+D_values: [32, 64, 128, 256, 512, 1024]
+
+lr_values: [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
+
+seeds: [42, 43, 44, 45, 46]
+
+training:
+  epochs: 40
+  batch_size: 128
+  optimizer: SGD
+  momentum: 0.9
+  weight_decay: 0.0
+  scheduler: cosine
+
+dataset:
+  name: CIFAR10
+  num_classes: 10
+
+measurements:
+  lambda_max_at_init: true
+  lambda_max_at_stationary: true
+  gamma: true
+  beta: true
+  stationary_check: true
+
+output:
+  save_models: false
+  save_losses: true
+  save_all_metrics: true

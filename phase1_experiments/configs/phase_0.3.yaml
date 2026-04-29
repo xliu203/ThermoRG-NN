@@ -1,0 +1,45 @@
+# Phase 0.3: GN + None Baseline Extension
+# ConvNet L=5, D ∈ {64, 256}, GN vs None
+# 3 learning rates, 3 seeds, 200 epochs
+
+experiment:
+  name: "phase_0.3_gn_none_baseline"
+  description: "Extend to GroupNorm and None normalization"
+  
+architecture:
+  L: 5
+  kernel_size: 3
+  skip_connections: false
+  activation: GELU
+
+norm_types: ['groupnorm', 'none']
+
+D_values: [64, 256]
+
+lr_values: [0.001, 0.01, 0.1]
+
+seeds: [42, 43, 44]
+
+training:
+  epochs: 200
+  batch_size: 128
+  optimizer: SGD
+  momentum: 0.9
+  weight_decay: 0.0
+  scheduler: cosine
+
+dataset:
+  name: CIFAR10
+  num_classes: 10
+
+measurements:
+  lambda_max_at_init: true
+  lambda_max_at_stationary: true
+  gamma: true
+  beta: true
+  stationary_check: true
+
+output:
+  save_models: false
+  save_losses: true
+  save_all_metrics: true
