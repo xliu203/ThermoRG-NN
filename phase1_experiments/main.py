@@ -123,25 +123,9 @@ class GracefulExit:
 # =============================================================================
 
 def load_cifar10(batch_size: int = 128, data_dir: str = './data'):
-    """Load CIFAR-10 dataset with Kaggle-aware paths."""
+    """Load CIFAR-10 dataset — follows same protocol as previous Kaggle experiments."""
     import torchvision
     import torchvision.transforms as transforms
-    
-    # Kaggle detection for data path
-    if is_kaggle_environment():
-        # On Kaggle, data is typically in /kaggle/input/
-        kaggle_data_paths = [
-            '/kaggle/input/cifar10-python',
-            '/kaggle/input/cifar10',
-            '/kaggle/input/cifar10-dataset',
-        ]
-        for kp in kaggle_data_paths:
-            if os.path.exists(kp):
-                data_dir = kp
-                break
-        else:
-            # Default Kaggle path - torchvision will download to working
-            data_dir = get_kaggle_working_dir()
     
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -155,22 +139,21 @@ def load_cifar10(batch_size: int = 128, data_dir: str = './data'):
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     
+    # On Kaggle: use ./data and always try to download (same as old notebooks)
+    # On local: use provided data_dir
+    if is_kaggle_environment():
+        data_dir = './data'
+    
     print(f"[Data] Loading CIFAR-10 from: {data_dir}")
     
-    # On Kaggle: always try to download (Kaggle blocks external internet for security,
-    # but torchvision download works through Kaggle's internal cache)
-    # On local: only download if data_dir doesn't exist
-    cifar_root = os.path.join(data_dir, 'cifar-10-batches-py')
-    should_download = is_kaggle_environment() or not os.path.exists(cifar_root)
-    
     trainset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=True, download=should_download, transform=transform_train
+        root=data_dir, train=True, download=True, transform=transform_train
     )
     testset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=False, download=should_download, transform=transform_test
+        root=data_dir, train=False, download=True, transform=transform_test
     )
     
-    # Use fewer workers on Kaggle to avoid pickle issues
+    # num_workers=0 for Kaggle (same as previous experiments)
     num_workers = 0 if is_kaggle_environment() else 2
     
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
