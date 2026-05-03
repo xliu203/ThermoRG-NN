@@ -157,11 +157,17 @@ def load_cifar10(batch_size: int = 128, data_dir: str = './data'):
     
     print(f"[Data] Loading CIFAR-10 from: {data_dir}")
     
+    # On Kaggle: always try to download (Kaggle blocks external internet for security,
+    # but torchvision download works through Kaggle's internal cache)
+    # On local: only download if data_dir doesn't exist
+    cifar_root = os.path.join(data_dir, 'cifar-10-batches-py')
+    should_download = is_kaggle_environment() or not os.path.exists(cifar_root)
+    
     trainset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=True, download=not os.path.exists(data_dir), transform=transform_train
+        root=data_dir, train=True, download=should_download, transform=transform_train
     )
     testset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=False, download=not os.path.exists(data_dir), transform=transform_test
+        root=data_dir, train=False, download=should_download, transform=transform_test
     )
     
     # Use fewer workers on Kaggle to avoid pickle issues
