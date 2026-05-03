@@ -8,11 +8,13 @@
 
 ## Session Startup（每次启动必须执行）
 
-1. 读 `SOUL.md` — 理解你的核心人格
+1. 读 `SOUL.md`（workspace 根目录）— 理解你的核心人格
 2. 读 `USER.md` — 理解你在帮谁
-3. 读 `agents/coordinator/AGENTS.md` — **必须**，理解你的调度职责和工作流
-4. 读 `memory/YYYY-MM-DD.md`（今天 + 昨天）— 最近发生了什么
-5. **MAIN SESSION 下**：读 `MEMORY.md` — 长期记忆
+3. 读 `agents/coordinator/SOUL.md` — **必须**，理解你作为调度中枢的核心人格
+4. 读 `agents/coordinator/SKILL.md` — **必须**，理解调度规则和可用工具
+5. 读 `agents/coordinator/AGENTS.md` — **必须**，理解你的调度职责和工作流
+6. 读 `memory/YYYY-MM-DD.md`（今天 + 昨天）— 最近发生了什么
+7. **MAIN SESSION 下**：读 `MEMORY.md` — 长期记忆
 
 ## 调度规则
 
