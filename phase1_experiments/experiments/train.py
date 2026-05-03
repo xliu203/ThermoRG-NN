@@ -533,22 +533,23 @@ def train_and_measure(
     if output_dir:
         save_run_result(results, output_dir)
         
-        # Save final checkpoint at end of training
-        checkpoint_manager.save(
-            run_id=run_id,
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            epoch=num_epochs - 1,
-            loss_history=state.loss_history,
-            lambda_max_history=state.lambda_max_history,
-            training_state={
-                'is_stationary': state.is_stationary,
-                'stationary_epoch': state.stationary_epoch,
-                'sigma_init': state.sigma_init.tolist() if state.sigma_init is not None else None,
-                'lambda_max_init': float(state.lambda_max_init) if state.lambda_max_init is not None else None,
-            },
-        )
+        # Save final checkpoint at end of training (only if checkpoint_manager was initialized)
+        if checkpoint_manager is not None:
+            checkpoint_manager.save(
+                run_id=run_id,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                epoch=num_epochs - 1,
+                loss_history=state.loss_history,
+                lambda_max_history=state.lambda_max_history,
+                training_state={
+                    'is_stationary': state.is_stationary,
+                    'stationary_epoch': state.stationary_epoch,
+                    'sigma_init': state.sigma_init.tolist() if state.sigma_init is not None else None,
+                    'lambda_max_init': float(state.lambda_max_init) if state.lambda_max_init is not None else None,
+                },
+            )
     
     return results
 
