@@ -150,13 +150,14 @@ class CheckpointManager:
         torch.save(checkpoint, checkpoint_path)
         return checkpoint_path
     
-    def load(self, run_id: str, epoch: Optional[int] = None) -> Dict:
+    def load(self, run_id: str, epoch: Optional[int] = None, device: str = 'cpu') -> Dict:
         """
         Load a checkpoint.
         
         Args:
             run_id: Run identifier
             epoch: Specific epoch to load, or None for latest
+            device: Device to map tensors to
             
         Returns:
             Checkpoint dict
@@ -172,7 +173,7 @@ class CheckpointManager:
         if not os.path.exists(checkpoint_path):
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
         
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         return checkpoint
 
 
@@ -364,12 +365,12 @@ def train_and_measure(
                 if verbose:
                     print(f"  [Skip] Checkpoint found at final epoch for {run_id}")
                 # Run completed, but no result file - reconstruct from checkpoint
-                ckpt = checkpoint_manager.load(run_id)
+                ckpt = checkpoint_manager.load(run_id, device=str(device))
                 return _reconstruct_result_from_checkpoint(ckpt)
             else:
                 if verbose:
                     print(f"  [Resume] Loading checkpoint epoch {checkpoint_epoch} for {run_id}")
-                checkpoint = checkpoint_manager.load(run_id)
+                checkpoint = checkpoint_manager.load(run_id, device=str(device))
                 start_epoch = checkpoint['epoch'] + 1
         else:
             checkpoint_manager = None  # No checkpoint to resume from
@@ -398,7 +399,7 @@ def train_and_measure(
     
     if latest is not None and start_epoch > 0:
         # Restore from checkpoint
-        checkpoint = checkpoint_manager.load(run_id)
+        checkpoint = checkpoint_manager.load(run_id, device=str(device))
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         if checkpoint['scheduler_state_dict'] and scheduler:
@@ -478,6 +479,15 @@ def train_and_measure(
                     'sigma_init': state.sigma_init.tolist() if state.sigma_init is not None else None,
                     'lambda_max_init': float(state.lambda_max_init) if state.lambda_max_init is not None else None,
                 },
+                additional_data={
+                    'config': {
+                        'D': D,
+                        'norm_type': norm_type,
+                        'lr': lr,
+                        'seed': seed,
+                        'num_epochs': num_epochs,
+                    }
+                },
             )
             if verbose:
                 print(f"  [Checkpoint] Saved at epoch {epoch + 1}")
@@ -549,6 +559,15 @@ def train_and_measure(
                     'sigma_init': state.sigma_init.tolist() if state.sigma_init is not None else None,
                     'lambda_max_init': float(state.lambda_max_init) if state.lambda_max_init is not None else None,
                 },
+                additional_data={
+                    'config': {
+                        'D': D,
+                        'norm_type': norm_type,
+                        'lr': lr,
+                        'seed': seed,
+                        'num_epochs': num_epochs,
+                    }
+                },
             )
     
     return results
@@ -557,14 +576,15 @@ def train_and_measure(
 def _reconstruct_result_from_checkpoint(checkpoint: Dict) -> Dict:
     """Reconstruct a result dict from a checkpoint."""
     training_state = checkpoint.get('training_state', {})
+    stored_config = checkpoint.get('config', {})
     
     return {
         'config': {
-            'D': None,  # Not stored in checkpoint
-            'norm_type': None,
-            'lr': None,
-            'seed': None,
-            'num_epochs': checkpoint['epoch'] + 1,
+            'D': stored_config.get('D'),
+            'norm_type': stored_config.get('norm_type'),
+            'lr': stored_config.get('lr'),
+            'seed': stored_config.get('seed'),
+            'num_epochs': stored_config.get('num_epochs', checkpoint['epoch'] + 1),
         },
         'sigma_init': training_state.get('sigma_init'),
         'sigma_final': None,  # Not available
