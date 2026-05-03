@@ -161,7 +161,7 @@ def power_iteration_single_layer(W: torch.Tensor,
         d = M.shape[0]
     
     torch.manual_seed(42)
-    b = torch.randn(d)
+    b = torch.randn(d, device=M.device)
     b = b / b.norm()
     
     lambda_prev = 0.0
@@ -177,7 +177,7 @@ def power_iteration_single_layer(W: torch.Tensor,
     
     # lambda_curr is eigenvalue of M = W.T @ W = singular_value^2
     # So singular_value = sqrt(lambda_curr)
-    return torch.sqrt(torch.tensor(lambda_curr)).item()
+    return torch.sqrt(torch.tensor(lambda_curr, device=M.device)).item()
 
 
 def measure_lambda_max(model: nn.Module, 
