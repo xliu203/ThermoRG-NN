@@ -2,11 +2,11 @@
 
 ## Startup 强制条款（必须遵守）
 
-每次 spawn 进入新 session 时，**第一条 ToolCall** 必须是按顺序读取以下文件（只使用 read tool，不得先执行其他任何操作）：
+每次 spawn 进入新 session 时，**第一条 ToolCall** 必须是按顺序读取以下三个文件（只使用 read tool，不得先执行其他任何操作）：
 
-1. `SOUL.md`（本目录）— 理解你的核心人格
-2. `SKILL.md`（本目录）— 理解你的技能和工具
-3. `AGENTS.md`（本目录）— 理解你的工作规范
+1. `/home/node/.openclaw/workspace/agents/paper-editor/SOUL.md` — 理解你的核心人格
+2. `/home/node/.openclaw/workspace/agents/paper-editor/SKILL.md` — 理解你的技能和工具
+3. `/home/node/.openclaw/workspace/agents/paper-editor/AGENTS.md` — 理解你的工作规范
 
 完成之前不得调用 edit/exec/write/search/其他任何工具。
 
