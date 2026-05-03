@@ -122,36 +122,60 @@ class GracefulExit:
 # DATA LOADING
 # =============================================================================
 
-def load_cifar10(batch_size: int = 128, data_dir: str = './data'):
-    """Load CIFAR-10 dataset — follows same protocol as previous Kaggle experiments."""
+def load_cifar10(batch_size: int = 128, data_dir: str = None):
+    """
+    Load CIFAR-10 dataset.
+    
+    Supports two modes:
+    - Fast.ai image version (Kaggle): uses ImageFolder at /kaggle/working/cifar10_fastai/cifar10/
+    - Standard version (local): uses torchvision.datasets.CIFAR10
+    """
     import torchvision
     import torchvision.transforms as transforms
+    from torchvision.datasets import ImageFolder
+    
+    # Normalization values (same as before)
+    mean = (0.4914, 0.4822, 0.4465)
+    std = (0.2023, 0.1994, 0.2010)
     
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize(mean, std),
     ])
     
     transform_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize(mean, std),
     ])
     
-    # On Kaggle: use ./data and always try to download (same as old notebooks)
-    # On local: use provided data_dir
-    if is_kaggle_environment():
-        data_dir = './data'
+    # Determine which version to use
+    fastai_path = '/kaggle/working/cifar10_fastai/cifar10'
+    use_fastai = is_kaggle_environment() and os.path.exists(fastai_path)
     
-    print(f"[Data] Loading CIFAR-10 from: {data_dir}")
-    
-    trainset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=True, download=True, transform=transform_train
-    )
-    testset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=False, download=True, transform=transform_test
-    )
+    if use_fastai:
+        # Fast.ai image version — use ImageFolder
+        train_root = os.path.join(fastai_path, 'train')
+        test_root = os.path.join(fastai_path, 'test')
+        
+        print(f"[Data] Loading CIFAR-10 (Fast.ai images) from: {fastai_path}")
+        
+        trainset = ImageFolder(root=train_root, transform=transform_train)
+        testset = ImageFolder(root=test_root, transform=transform_test)
+    else:
+        # Standard torchvision CIFAR-10
+        if data_dir is None:
+            data_dir = './data' if is_kaggle_environment() else './data'
+        
+        print(f"[Data] Loading CIFAR-10 (torchvision) from: {data_dir}")
+        
+        trainset = torchvision.datasets.CIFAR10(
+            root=data_dir, train=True, download=True, transform=transform_train
+        )
+        testset = torchvision.datasets.CIFAR10(
+            root=data_dir, train=False, download=True, transform=transform_test
+        )
     
     # num_workers=0 for Kaggle (same as previous experiments)
     num_workers = 0 if is_kaggle_environment() else 2
