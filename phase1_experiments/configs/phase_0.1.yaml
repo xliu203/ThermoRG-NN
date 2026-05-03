@@ -1,6 +1,7 @@
 # Phase 0.1: EOS Boundary Verification
 # ConvNet L=5, D=256, BN vs LN
-# 8 learning rates, 3 seeds, 20 epochs
+# Extended LR range to capture η_crit (target λ_max·η ≈ 2, with λ_max ≈ 2.4 → η_crit ≈ 0.83)
+# 11 learning rates, 3 seeds, 20 epochs
 
 experiment:
   name: "phase_0.1_eos_verification"
@@ -16,7 +17,7 @@ norm_types: ['batchnorm', 'layernorm']
 
 D_values: [256]
 
-lr_values: [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3]
+lr_values: [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0, 2.0]
 
 seeds: [42, 43, 44]
 
