@@ -16,8 +16,8 @@ Usage:
     python main.py --phase 0.2 --resume  # Resume partial run
     
     # Phase 0.2 split by lr group:
-    python main.py --phase 0.2 --lr-group 0  # First 3 learning rates
-    python main.py --phase 0.2 --lr-group 1  # Next 3 learning rates
+    python main.py --phase 0.2 --lr-group 0  # First half of learning rates
+    python main.py --phase 0.2 --lr-group 1  # Second half of learning rates
 """
 
 import argparse
@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from models.convnet import create_model, ConvNetL5
 from experiments.train import (
-    train_and_measure, run_experiment_grid, load_partial_results,
+    train_and_measure, run_experiment_grid,
     get_run_id, CheckpointManager
 )
 from utils.measurements import (
@@ -337,7 +337,7 @@ def run_phase_0_2(
     
     Can be split via:
     - D_start/D_end: Train on D_values[D_start:D_end] only
-    - lr_group: Train on lr_values[lr_group*3:(lr_group+1)*3] only
+    - lr_group: Train on roughly half of lr_values (split into 2 groups)
     """
     print("\n" + "="*70)
     print("PHASE 0.2: BN vs LN PARALLEL LINES CORE TEST")
@@ -355,8 +355,12 @@ def run_phase_0_2(
     
     if lr_group is not None:
         all_lr_values = config['lr_values']
-        lr_start = lr_group * 3
-        lr_end = (lr_group + 1) * 3
+        n_lrs = len(all_lr_values)
+        # Split into 2 groups of roughly equal size
+        n_groups = 2
+        group_size = (n_lrs + n_groups - 1) // n_groups  # Ceiling division
+        lr_start = lr_group * group_size
+        lr_end = min((lr_group + 1) * group_size, n_lrs)
         lr_values = all_lr_values[lr_start:lr_end]
         print(f"[Split] Training on lr_values[{lr_group}]: {lr_values}")
     else:
@@ -438,6 +442,7 @@ def run_phase_0_2(
             print(f"\n{norm_type}: Not enough valid points ({len(beta_gamma_pairs)})")
     
     # F-test for equal slopes
+    f_test = None
     if len(regression_results) >= 2:
         f_test = f_test_equal_slopes(regression_results)
         print(f"\nF-test for equal slopes:")
@@ -536,7 +541,7 @@ def main():
     parser.add_argument('--D-end', type=int, default=None,
                        help='Phase 0.2: End index for D_values slice')
     parser.add_argument('--lr-group', type=int, default=None,
-                       help='Phase 0.2: Learning rate group (0=narrow, 1=medium, 2=wide)')
+                       help='Phase 0.2: Learning rate group (0=first half, 1=second half)')
     parser.add_argument('--batch-size', type=int, default=128,
                        help='Batch size (default: 128)')
     

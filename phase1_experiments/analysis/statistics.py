@@ -132,7 +132,7 @@ def fit_beta_vs_ln_gamma(beta_gamma_pairs: List[Tuple[float, float]],
     slope, intercept, r_value, p_value, std_err = stats.linregress(ln_gamma, betas_valid)
     
     return {
-        's': slope,
+        'm': slope,
         'c': intercept,
         'r_squared': r_value ** 2,
         'p_value': p_value,
@@ -189,11 +189,21 @@ def f_test_equal_slopes(regression_results: Dict[str, Dict],
     # Between-group SS (due to slope differences)
     ss_between = np.sum(all_ns * (all_slopes - pooled_slope)**2)
     
-    # Approximate within-group variance from typical R²
-    # This is a simplification - real implementation needs raw residuals
-    avg_r2 = np.mean([regression_results[nt]['r_squared'] for nt in norm_types])
-    # Assume typical residual variance
-    ms_within = 0.01  # This is an approximation
+    # Estimate within-group variance from regression standard errors
+    # MSE_i = std_err_i² * S_xx_i, approximated from R² and slope magnitude
+    # Typical observed range of ln(γ) is ~[-7, 5] (γ from ~0.001 to ~150)
+    ln_gamma_range_estimate = 12.0
+    mse_estimates = []
+    for nt in norm_types:
+        res = regression_results[nt]
+        if (res.get('m') is not None and res.get('r_squared') is not None
+                and res['r_squared'] < 1 and np.isfinite(res['m'])):
+            # Var(β) ≈ (m · ln(γ)_range / 4)²   (uniform spread assumption)
+            var_beta = (res['m'] * ln_gamma_range_estimate / 4) ** 2
+            # MSE = (1 - R²) · Var(β)
+            mse = (1 - res['r_squared']) * var_beta
+            mse_estimates.append(mse)
+    ms_within = float(np.mean(mse_estimates)) if mse_estimates else 0.01
     
     if ms_within <= 0:
         return {'f_statistic': None, 'p_value': None, 'reject_null': None,

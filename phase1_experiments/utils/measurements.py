@@ -64,7 +64,7 @@ def get_normalized_activations(x: torch.Tensor, norm_type: str,
         x_grouped = x.view(N, G, C_per_g, H, W)
         mu = x_grouped.mean(dim=(2, 3, 4), keepdim=True)
         sigma = x_grouped.std(dim=(2, 3, 4), keepdim=True)
-        return x_grouped.view(N, C, H, W)
+        return ((x_grouped - mu) / sigma).view(N, C, H, W)
         
     elif norm_type == 'none':
         return x
@@ -394,53 +394,9 @@ def fit_beta_vs_ln_gamma(beta_gamma_pairs: List[Tuple[float, float]],
 
 def f_test_equal_slopes(regression_results: Dict[str, Dict],
                         alpha: float = 0.05) -> Dict:
-    """F-test to check if all normalization types have equal slopes."""
-    norm_types = list(regression_results.keys())
-    k = len(norm_types)
-    
-    groups_data = []
-    for nt in norm_types:
-        res = regression_results[nt]
-        if res['s'] is not None and res['n_points'] >= 3:
-            groups_data.append({
-                'slope': res['s'],
-                'n': res['n_points'],
-                'r2': res['r_squared']
-            })
-    
-    if len(groups_data) < 2:
-        return {'f_statistic': None, 'p_value': None, 'reject_null': None}
-    
-    N = sum(g['n'] for g in groups_data)
-    df_between = k - 1
-    df_within = N - 2 * k
-    
-    if df_within <= 0:
-        return {'f_statistic': None, 'p_value': None, 'reject_null': None}
-    
-    weights = np.array([g['n'] for g in groups_data])
-    slopes = np.array([g['slope'] for g in groups_data])
-    
-    pooled_n = np.mean(weights)
-    ss_between = np.sum(weights * (slopes - np.average(slopes, weights=weights)) ** 2)
-    ms_between = ss_between / df_between
-    
-    ms_within = 0.01  # Placeholder
-    
-    if ms_within <= 0:
-        return {'f_statistic': None, 'p_value': None, 'reject_null': None}
-    
-    f_stat = ms_between / ms_within
-    p_value = 1 - stats.f.cdf(f_stat, df_between, df_within)
-    
-    return {
-        'f_statistic': f_stat,
-        'p_value': p_value,
-        'df_between': df_between,
-        'df_within': df_within,
-        'reject_null': p_value < alpha,
-        'norm_types': norm_types
-    }
+    """F-test for equal slopes — delegates to analysis.statistics implementation."""
+    from analysis.statistics import f_test_equal_slopes as _f_test
+    return _f_test(regression_results, alpha)
 
 
 # =============================================================================
