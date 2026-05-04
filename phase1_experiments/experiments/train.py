@@ -547,7 +547,7 @@ def train_and_measure(
         # that didn't save sigma_init. Skip gamma computation.
         gamma = None
         gamma_init = None
-        logger.warning("sigma_init is None — skipping gamma computation")
+        print(f"  [Warning] sigma_init is None for {run_id} — skipping gamma computation")
     else:
         sigma_init_arr = state.sigma_init if isinstance(state.sigma_init, np.ndarray) else np.array(state.sigma_init)
         sigma_ratio = sigma_final / (sigma_init_arr + 1e-8)
