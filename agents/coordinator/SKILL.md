@@ -19,3 +19,4 @@ description: Task distribution and project management. Model: minimax/MiniMax-M2
 ## 规则
 - 不用 git 直接操作，全部 spawn coding agent
 - sub-agent 失败只能重新 spawn，不越权
+- **Spawn startup**：每个 sub-agent 在新 session 被 spawn 时，必须先读自己的 SOUL/SKILL/AGENTS（冷启动）；在已有 ongoing session 中被再次派发任务时**不重复读取**，保持 session 连贯性。

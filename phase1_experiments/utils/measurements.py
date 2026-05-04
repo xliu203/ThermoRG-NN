@@ -111,7 +111,11 @@ def measure_gamma(activations_init: List[torch.Tensor],
     sigma_final = compute_activation_l2_norms(activations_final)
     
     # γ: representational shift
-    log_ratios = torch.log(sigma_final / sigma_init)
+    # Guard against log(0) by filtering out zero values
+    mask = (sigma_init > 0) & (sigma_final > 0)
+    if mask.sum() == 0:
+        return (0.0, None, sigma_init.numpy(), sigma_final.numpy())
+    log_ratios = torch.log(sigma_final[mask] / sigma_init[mask])
     gamma = torch.abs(log_ratios).mean().item()
     
     # γ_init: zero-point fluctuation indicator
@@ -160,8 +164,8 @@ def power_iteration_single_layer(W: torch.Tensor,
         M = W_mat
         d = M.shape[0]
     
-    torch.manual_seed(42)
-    b = torch.randn(d, device=M.device)
+    g = torch.Generator().manual_seed(42)
+    b = torch.randn(d, device=M.device, generator=g)
     b = b / b.norm()
     
     lambda_prev = 0.0
@@ -169,6 +173,10 @@ def power_iteration_single_layer(W: torch.Tensor,
     for _ in range(num_iterations):
         Mb = M @ b
         lambda_curr = Mb.norm().item()
+        
+        # Guard against zero/NaN lambda causing division by zero
+        if lambda_curr == 0 or not torch.isfinite(torch.tensor(lambda_curr)):
+            return 0.0
         b = Mb / lambda_curr
         
         if abs(lambda_curr - lambda_prev) < tol:
@@ -228,7 +236,7 @@ def fit_beta(losses: np.ndarray,
             D_values,
             losses,
             p0=[alpha_guess, beta_guess, E_floor_guess],
-            bounds=([0, 0, 0], [np.inf, 5, np.max(losses)]),
+            bounds=([0, 0, 0], [np.inf, 5, np.max(np.nan_to_num(losses, nan=0.0))]),
             maxfev=10000
         )
         
@@ -368,28 +376,9 @@ def find_eta_crit(model_factory,
 
 def fit_beta_vs_ln_gamma(beta_gamma_pairs: List[Tuple[float, float]],
                          norm_type: str) -> Dict:
-    """Fit β = m * ln(γ) + c linear regression."""
-    betas = np.array([p[0] for p in beta_gamma_pairs])
-    gammas = np.array([p[1] for p in beta_gamma_pairs])
-    
-    valid_mask = gammas > 0
-    if np.sum(valid_mask) < 3:
-        return {'s': None, 'c': None, 'r_squared': 0, 'n_points': len(gammas)}
-    
-    ln_gamma = np.log(gammas[valid_mask])
-    betas_valid = betas[valid_mask]
-    
-    slope, intercept, r_value, p_value, std_err = stats.linregress(ln_gamma, betas_valid)
-    
-    return {
-        's': slope,
-        'c': intercept,
-        'r_squared': r_value ** 2,
-        'p_value': p_value,
-        'std_err': std_err,
-        'n_points': int(np.sum(valid_mask)),
-        'norm_type': norm_type
-    }
+    """Fit β = m * ln(γ) + c linear regression - delegates to analysis.statistics."""
+    from analysis.statistics import fit_beta_vs_ln_gamma as _fit
+    return _fit(beta_gamma_pairs, norm_type)
 
 
 def f_test_equal_slopes(regression_results: Dict[str, Dict],
@@ -457,7 +446,7 @@ def save_run_result(result: Dict, output_dir: str):
         run_id = get_run_id(cfg.get('D'), cfg.get('norm_type'), cfg.get('lr'), cfg.get('seed'))
     else:
         # Generate a hash-based ID if config not available
-        run_id = f"run_{hash(str(result))[:16]}"
+        run_id = f"run_{abs(hash(str(result)))}"
     
     filepath = os.path.join(output_dir, f"result_{run_id}.json")
     save_results(result, filepath)

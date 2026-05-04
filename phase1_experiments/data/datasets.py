@@ -2,6 +2,7 @@
 CIFAR-10 data loading utilities.
 """
 
+import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -51,20 +52,33 @@ def load_cifar10(
     """
     train_transform, test_transform = get_transforms(augment)
     
-    trainset = torchvision.datasets.CIFAR10(
-        root=data_dir,
-        train=True,
-        download=download,
-        transform=train_transform
-    )
-    
-    testset = torchvision.datasets.CIFAR10(
-        root=data_dir,
-        train=False,
-        download=download,
-        transform=test_transform
-    )
-    
+    os.makedirs(data_dir, exist_ok=True)
+
+    try:
+        trainset = torchvision.datasets.CIFAR10(
+            root=data_dir,
+            train=True,
+            download=download,
+            transform=train_transform
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to download CIFAR-10 dataset: {e}. Please check network connection or manually place data in {data_dir}")
+
+    try:
+        testset = torchvision.datasets.CIFAR10(
+            root=data_dir,
+            train=False,
+            download=download,
+            transform=test_transform
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to download CIFAR-10 dataset: {e}. Please check network connection or manually place data in {data_dir}")
+
+    if len(trainset) == 0:
+        raise ValueError(f"CIFAR-10 trainset is empty. Data may be corrupted in {data_dir}")
+    if len(testset) == 0:
+        raise ValueError(f"CIFAR-10 testset is empty. Data may be corrupted in {data_dir}")
+
     trainloader = DataLoader(
         trainset,
         batch_size=batch_size,
@@ -103,7 +117,9 @@ def create_split_loaders(
     total_size = len(dataset)
     train_size = int(total_size * train_ratio)
     val_size = total_size - train_size
-    
+
+    assert train_size > 0 and val_size > 0, f"Invalid split: train_size={train_size}, val_size={val_size}"
+
     train_subset, val_subset = random_split(
         dataset,
         [train_size, val_size],

@@ -32,7 +32,8 @@ def aggregate_results(results_all: List[Dict]) -> List[Dict]:
     # Group by (norm_type, D, lr)
     groups = {}
     for r in results_all:
-        key = (r['config']['norm_type'], r['config']['D'], r['config']['lr'])
+        cfg = r.get('config', {})
+        key = (cfg.get('norm_type'), cfg.get('D'), cfg.get('lr'))
         if key not in groups:
             groups[key] = []
         groups[key].append(r)
@@ -297,8 +298,9 @@ def ancova_test_equal_slopes(raw_data: List[Dict], alpha: float = 0.05) -> Dict:
 
     # Fit full ANCOVA model with interaction
     # C(norm_type) creates indicator variables for each norm type
-    # C(norm_type):np.log(gamma) creates the interaction terms
-    formula = 'beta ~ C(norm_type) * np.log(gamma)'
+    # C(norm_type):ln_gamma creates the interaction terms
+    # Note: ln_gamma is pre-computed above (line ~275) to avoid np.log namespace issues
+    formula = 'beta ~ C(norm_type) * ln_gamma'
 
     try:
         model = smf.ols(formula, data=df).fit()
@@ -447,8 +449,8 @@ def extract_physics_constants(regression_results: Dict[str, Dict]) -> Dict:
         Dict with β_spec, A_norm per normalization type
     """
     # Pooled slope (β_spec)
-    slopes = np.array([r['s'] for r in regression_results.values() if r['s'] is not None])
-    ns = np.array([r['n_points'] for r in regression_results.values() if r['s'] is not None])
+    slopes = np.array([r['m'] for r in regression_results.values() if r['m'] is not None])
+    ns = np.array([r['n_points'] for r in regression_results.values() if r['m'] is not None])
     
     if len(slopes) == 0:
         return {'beta_spec': None, 'A_norm': {}, 'message': 'No valid slopes'}
@@ -483,7 +485,7 @@ def check_parallel_lines(regression_results: Dict[str, Dict],
     Returns:
         Dict with check results
     """
-    slopes = {nt: r['s'] for nt, r in regression_results.items() if r['s'] is not None}
+    slopes = {nt: r['m'] for nt, r in regression_results.items() if r['m'] is not None}
     
     if len(slopes) < 2:
         return {'is_parallel': None, 'message': 'Need at least 2 norm types'}

@@ -127,13 +127,8 @@ class ConvNetL5(nn.Module):
                 return (x - norm_layer.running_mean.view(1, -1, 1, 1)) / \
                        torch.sqrt(norm_layer.running_var.view(1, -1, 1, 1) + norm_layer.eps)
         
-        elif isinstance(norm_layer, nn.LayerNorm):
-            return norm_layer(x)
-        
-        elif isinstance(norm_layer, nn.GroupNorm):
-            return norm_layer(x)
-        
-        return x
+        # GroupNorm (includes GroupNorm(1, C) for layernorm replacement)
+        return norm_layer(x)
     
     def forward(self, x: torch.Tensor, store_activations: bool = False) -> torch.Tensor:
         """
@@ -261,103 +256,6 @@ class ModelFactory:
     def create_multiple(self, n: int) -> List[ConvNetL5]:
         """Create multiple models with different random initializations."""
         return [self() for _ in range(n)]
-
-
-# =============================================================================
-# ACTIVATION EXTRACTION UTILITIES
-# =============================================================================
-
-class ActivationExtractor:
-    """
-    Utility class to extract activations from a model during training.
-    
-    Uses forward hooks to capture normalized activations (no affine)
-    at each layer for γ measurement.
-    """
-    
-    def __init__(self, model: nn.Module, norm_type: str):
-        self.model = model
-        self.norm_type = norm_type
-        self.activations_init = None
-        self.activations_final = None
-        self.hooks = []
-        self._register_hooks()
-    
-    def _get_norm_output(self, x: torch.Tensor, norm_layer) -> torch.Tensor:
-        """Apply normalization without affine."""
-        if norm_layer is None:
-            return x
-        
-        if isinstance(norm_layer, nn.BatchNorm2d):
-            if self.model.training:
-                return norm_layer(x)
-            else:
-                return (x - norm_layer.running_mean.view(1, -1, 1, 1)) / \
-                       torch.sqrt(norm_layer.running_var.view(1, -1, 1, 1) + norm_layer.eps)
-        else:
-            return norm_layer(x)
-    
-    def _make_hook(self, name: str, norm_layer):
-        """Create a forward hook to capture activations."""
-        def hook(module, input, output):
-            # The output here is the output AFTER conv, BEFORE norm
-            # We need to apply norm ourselves to get normalized activations
-            pass  # We'll handle this differently - see forward pass
-        return hook
-    
-    def capture_init_activations(self, dataloader, device: torch.device):
-        """Capture initial activations (after initialization)."""
-        self.model.eval()
-        self.activations_init = []
-        
-        # Get a batch of data
-        for data, _ in dataloader:
-            data = data.to(device)
-            
-            # Manual forward to capture normalized activations
-            x = data
-            for i in range(1, 6):
-                conv = getattr(self.model, f'conv{i}')
-                norm = getattr(self.model, f'norm{i}')
-                act = self.model.activation
-                
-                x = conv(x)
-                norm_out = self._get_norm_output(x, norm)
-                self.activations_init.append(norm_out.detach().cpu())
-                x = act(norm_out)
-            
-            break  # Only first batch
-    
-    def capture_final_activations(self, dataloader, device: torch.device):
-        """Capture final activations at stationarity."""
-        self.model.eval()
-        self.activations_final = []
-        
-        for data, _ in dataloader:
-            data = data.to(device)
-            
-            x = data
-            for i in range(1, 6):
-                conv = getattr(self.model, f'conv{i}')
-                norm = getattr(self.model, f'norm{i}')
-                act = self.model.activation
-                
-                x = conv(x)
-                norm_out = self._get_norm_output(x, norm)
-                self.activations_final.append(norm_out.detach().cpu())
-                x = act(norm_out)
-            
-            break
-    
-    def get_activations(self) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
-        """Get stored initial and final activations."""
-        return self.activations_init, self.activations_final
-    
-    def remove_hooks(self):
-        """Remove all registered hooks."""
-        for hook in self.hooks:
-            hook.remove()
-        self.hooks = []
 
 
 # =============================================================================

@@ -1,0 +1,47 @@
+# Phase 1.2: EOS Systematic Verification
+# Measures λ_max at initialization for all runs from Phase 1.1
+# Verifies λ_max · η ∈ [1, 3] for all normalization types
+# Reuses Phase 1.1 grid: 4 norm × 6 D × 9 η × 5 seeds = 1080 runs
+
+experiment:
+  name: "phase_1.2_eos_verification"
+  description: "EOS systematic verification using Phase 1.1 grid - measure λ_max at init"
+
+architecture:
+  L: 5
+  kernel_size: 3
+  skip_connections: false
+  activation: GELU
+
+norm_types: ['batchnorm', 'layernorm', 'groupnorm', 'none']
+
+D_values: [32, 64, 128, 256, 512, 1024]
+
+lr_values: [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
+
+seeds: [42, 43, 44, 45, 46]
+
+training:
+  # Phase 1.2 doesn't train - just measures λ_max at initialization
+  # But we need to instantiate models to measure their weights
+  epochs: 0  # No training - only initialization measurement
+  batch_size: 128
+
+dataset:
+  name: CIFAR10
+  num_classes: 10
+
+measurements:
+  lambda_max_at_init: true
+  # No training measurements needed
+
+output:
+  save_models: false
+  save_losses: false
+  save_all_metrics: true
+
+# EOS verification thresholds
+eos_verification:
+  target_ratio: 2.0  # λ_max · η should be ~2 for critical learning rate
+  tolerance_low: 1.0  # Lower bound for λ_max · η
+  tolerance_high: 3.0  # Upper bound for λ_max · η
